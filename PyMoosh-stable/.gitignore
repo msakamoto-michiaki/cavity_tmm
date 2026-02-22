@@ -1,0 +1,19 @@
+# Environments
+.venv
+.vscode
+.git
+exclude
+*__pycache__
+notebooks/.ipynb_checkpoints
+*.egg-info
+dist
+build
+code/*
+code
+mine
+mine/*
+mine_PyMoosh/*
+Fig/*
+*.svg
+TODO.txt
+tests/*

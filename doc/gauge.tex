@@ -1,0 +1,380 @@
+\documentclass[a4paper,11pt]{article}
+
+\usepackage{amsmath,amssymb,bm}
+\usepackage{physics}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\geometry{margin=20mm}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{teal},
+  showstringspaces=false,
+  frame=single,
+  breaklines=true
+}
+
+\title{Fig4 (run\_fig4\_absD2\_vs\_absK2.py) のゲージ定義と\\
+ゲージ不整合を絶対に再発させないための詳細メモ（再現可能版）}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{対象・前提}
+\begin{itemize}
+  \item 対象ファイルは \textbf{run\_fig4\_absD2\_vs\_absK2.py だけ}（あなたの要望どおり）。
+  \item このメモは「\textbf{いつでも間違えたらこれを見れば直せる}」ことを目的に、\textbf{ゲージの定義}を数式で固定し、\textbf{コードとの対応}を（行番号付きで）明示する。
+  \item 本メモは、あなたが採用している ``proxy（Airy フィルタ + 近似重み）'' の枠内で、\textbf{位相参照面（ゲージ）を厳密に整合させる}話に限定する
+  （dyadic GF の係数実装の前段階の整合条件）。
+\end{itemize}
+
+\section*{結論（これだけ覚えれば良い）}
+このスクリプトは
+\begin{enumerate}
+  \item 位相（光学長）に \(\{L_{\mathrm{cav,opt}}, z_{\mathrm{opt}}\}\) を使う（\textbf{prime/cavity-gauge}）
+  \item 反射係数 \(r_b,r_t\) を \textbf{EML 界面基準（Gauge-B）}で計算する関数から取ってしまいがち
+\end{enumerate}
+なので、放置すると
+\[
+\boxed{
+D = 1 - \underbrace{r_b^{(B)} r_t^{(B)}}_{\text{EML基準}}
+\exp\!\left(i\frac{4\pi}{\lambda} \underbrace{L_{\mathrm{cav,opt}}}_{\text{prime基準}}\right)
+}
+\]
+という \textbf{ゲージ混在}が発生する。
+
+\bigskip
+\noindent
+これを再発させない唯一の方法は次のどちらか：
+\begin{itemize}
+  \item \textbf{(方法B)} すべてを Gauge-B にそろえて \(L_{\mathrm{eml,opt}}\) を指数に使う
+  \item \textbf{(方法P)} 反射係数だけ位相補正して \(\{L_{\mathrm{cav,opt}}, r_b', r_t'\}\) にそろえる（``ゲージ分を取り直す''）
+\end{itemize}
+この文書と付属パッチは \textbf{(方法P)} を run\_fig4 の中だけで完結させている。
+
+\section{ゲージ定義を数式で固定する}
+
+\subsection{波長・面内パラメータ}
+\begin{itemize}
+\item 波長：\(\lambda\)（nm表記を想定）
+\item 面内パラメータ：\(u\)（スクリプトは \(u\in[0,2]\) などの格子）
+\item スクリプトの屈折率は、位相用に \textbf{実数}を使う：
+\[
+n_j^{(\mathrm{re})} \equiv \Re\{n_j\}
+\]
+\item スクリプトの光学座標は
+\[
+\Re\left(\frac{k_{z,j}}{k_0}\right)=\Re\sqrt{(n_j^{(\mathrm{re})})^2-u^2}
+\]
+で作る（吸収を位相座標から外す）。これは proxy の設計仕様。
+\end{itemize}
+
+\subsection{ゲージB（EML基準）}
+\textbf{Gauge-B} は「EML を基準にしたゲージ」で、
+\[
+\{L_{\mathrm{eml,opt}}(u),\ r_b^{(B)}(\lambda,u),\ r_t^{(B)}(\lambda,u)\}
+\]
+を指す。
+
+\begin{itemize}
+\item \(L_{\mathrm{eml,opt}}(u)\)：
+\[
+\boxed{
+L_{\mathrm{eml,opt}}(u)=
+\Re\sqrt{(n_{\mathrm{EML}}^{(\mathrm{re})})^2-u^2}\,d_{\mathrm{EML}}
+}
+\]
+\item \(r_b^{(B)}\)：\textbf{EML 下端界面（EML/EBL）側}を参照面とする、下側スタックへの見込み反射（複素）
+\item \(r_t^{(B)}\)：\textbf{EML 上端界面（EML/ETL）側}を参照面とする、上側スタックへの見込み反射（複素）
+\end{itemize}
+
+Gauge-B で Fabry--Pérot 型分母を作るなら：
+\[
+\boxed{
+D_B(\lambda,u)=
+1-r_b^{(B)}(\lambda,u)\,r_t^{(B)}(\lambda,u)\,
+\exp\!\left(i\frac{4\pi}{\lambda}L_{\mathrm{eml,opt}}(u)\right)
+}
+\]
+
+\subsection{prime（cavity-gauge, プライム）}
+\textbf{prime} は「ITO側の原点から ETL/cathode1 面まで」を光学座標で測るゲージで、
+\[
+\{L_{\mathrm{cav,opt}}(u),\ z_{\mathrm{opt}}(u),\ r_b'(\lambda,u),\ r_t'(\lambda,u)\}
+\]
+を指す。
+
+\begin{itemize}
+\item \(L_{\mathrm{cav,opt}}(u)\)：ITO起点から ETL/cathode1 面までの単一パス光学長（optcoord が返す）
+\item \(z_{\mathrm{opt}}(u)\)：同じ原点から EML center までの光学座標
+\end{itemize}
+
+prime で分母を作るなら：
+\[
+\boxed{
+D_P(\lambda,u)=
+1-r_b'(\lambda,u)\,r_t'(\lambda,u)\,
+\exp\!\left(i\frac{4\pi}{\lambda}L_{\mathrm{cav,opt}}(u)\right)
+}
+\]
+
+\subsection{2つのゲージの関係（これが最重要）}
+prime の全長は
+\[
+L_{\mathrm{cav,opt}}(u)=S_b(u)+L_{\mathrm{eml,opt}}(u)+S_t(u)
+\]
+と分解できる。ここで
+\begin{equation}
+S_b(u) =
+\sum_{j\in\{\mathrm{ITO,pHTL,Rprime,HTL,EBL}\}}
+\Re\sqrt{(n_j^{(\mathrm{re})})^2-u^2}\,d_j
+\end{equation}
+
+\begin{equation}
+S_t(u) =
+\Re\sqrt{(n_{\mathrm{ETL}}^{(\mathrm{re})})^2-u^2}\,d_{\mathrm{ETL}}
+\end{equation}
+は、prime の参照面と EML 界面参照面の ``ずれ（ゲージ差）'' の光学距離である。
+
+\section{run\_fig4 の式（コードと同一の式で固定）}
+
+\subsection{偏光ごとのフィルタ}
+スクリプトは TE/TM（\(\alpha\in\{\mathrm{TE,TM}\}\)）ごとに
+\[
+F_\alpha(\lambda,u)=\frac{G_\alpha(\lambda,u)}{|D_\alpha(\lambda,u)|^2}
+\quad\text{または}\quad
+F_\alpha^{(c)}(\lambda,u)=\frac{G_\alpha(\lambda,u)}{D_\alpha(\lambda,u)}
+\]
+を作る（\(|D|^2\) 版と complex \(D\) 版）。
+
+\subsubsection{分子 \(G\)}
+コードの形（run\_fig4 では \texttt{phi\_sign=-1} がデフォルト）：
+\[
+\boxed{
+G_\alpha(\lambda,u)=
+1+|r_b^{(\alpha)}|^2
++2|r_b^{(\alpha)}|\cos\!\left(\arg(r_b^{(\alpha)})+\frac{4\pi}{\lambda}z_{\mathrm{opt}}(u)\right)
+}
+\]
+これは次と等価：
+\[
+G_\alpha(\lambda,u)=
+\left|1+r_b^{(\alpha)}(\lambda,u)\exp\!\left(i\frac{4\pi}{\lambda}z_{\mathrm{opt}}(u)\right)\right|^2
+\]
+
+\subsubsection{分母 \(D\)}
+コードは振幅と位相に分解して計算しているが、厳密には
+\[
+\boxed{
+D_\alpha(\lambda,u)=
+1-r_b^{(\alpha)}(\lambda,u)\,r_t^{(\alpha)}(\lambda,u)\,
+\exp\!\left(i\frac{4\pi}{\lambda}L_{\mathrm{cav,opt}}(u)\right)
+}
+\]
+と同一である（\(\phi_{\mathrm{sign}}=-1\) のため）。
+
+\bigskip
+\noindent
+\textbf{ここでの致命的な落とし穴}：
+\begin{itemize}
+\item \(L_{\mathrm{cav,opt}}\) を使うなら、\(r_b,r_t\) は prime 参照面の \(r_b',r_t'\) でなければならない。
+\item もし \(r_b,r_t\) が Gauge-B 参照面の \(r_b^{(B)},r_t^{(B)}\) だと、指数は \(L_{\mathrm{eml,opt}}\) を使うべきで、混在する。
+\end{itemize}
+
+\section{混在を直す「ゲージ分を取り直す」処方箋（方法P）}
+
+\subsection{狙い}
+スクリプトは \(L_{\mathrm{cav,opt}}\) を使い続けたい（Fig4 表示ルーチンを変えたくない）ので、
+\[
+r_b^{(B)}, r_t^{(B)} \ \longrightarrow\ r_b', r_t'
+\]
+へ \textbf{参照面移送}を行い、
+\[
+r_b' r_t' e^{i\frac{4\pi}{\lambda}L_{\mathrm{cav,opt}}}
+=
+r_b^{(B)} r_t^{(B)} e^{i\frac{4\pi}{\lambda}L_{\mathrm{eml,opt}}}
+\]
+を恒等的に満たすようにする。
+
+\subsection{位相補正（参照面移送）の定義}
+run\_fig4 の proxy 位相定義（実数 \(n\)）に合わせて、
+\begin{equation}    
+r_b'(\lambda,u) = r_b^{(B)}(\lambda,u)\exp\!\left(-i\frac{4\pi}{\lambda}S_b(u)\right)
+\end{equation}
+\begin{equation}
+r_t'(\lambda,u) = r_t^{(B)}(\lambda,u)\exp\!\left(-i\frac{4\pi}{\lambda}S_t(u)\right)
+\end{equation}
+
+とする。
+
+このとき
+\[
+r_b' r_t' e^{i\frac{4\pi}{\lambda}L_{\mathrm{cav,opt}}}
+=
+r_b^{(B)} r_t^{(B)}
+e^{i\frac{4\pi}{\lambda}(L_{\mathrm{cav,opt}}-S_b-S_t)}
+=
+r_b^{(B)} r_t^{(B)} e^{i\frac{4\pi}{\lambda}L_{\mathrm{eml,opt}}}
+\]
+なので、prime で計算しても Gauge-B で計算しても分母は一致する。
+
+\section{コード対応（行番号付きで完全固定）}
+
+本節は、\textbf{どこを見れば間違いを即修正できるか}のためのチェックリスト。
+
+\subsection{(1) 位相ゲージ（prime）を作っている箇所}
+\begin{itemize}
+\item \texttt{zopt\_Lcavopt} / \texttt{zopt\_Lcavopt\_u} の import：
+\begin{lstlisting}
+(L32) from cavity_common.optcoord import zopt_Lcavopt
+(L34) from cavity_common.optcoord_angle import zopt_Lcavopt_u
+\end{lstlisting}
+
+\item 実際に呼んで \(z,L\) を得る箇所：
+\begin{lstlisting}
+(L138) z0, L0 = zopt_Lcavopt(nmap, d)           # u=0
+(L144) z_u, L_u = zopt_Lcavopt_u(nmap, d, u)    # u!=0
+\end{lstlisting}
+
+\textbf{ここで得る \(L\) は prime の \(L_{\mathrm{cav,opt}}\)。}
+\end{itemize}
+
+\subsection{(2) 分母 \(D\) の定義（prime を仮定していることの確定）}
+\begin{itemize}
+\item \(|D|^2\) 版の位相：
+\begin{lstlisting}
+(L102) dPhi = (-phi_sign*phib) + (-phi_sign*phit) + (4*pi*Lcavopt/lambda_nm)
+\end{lstlisting}
+\item complex \(D\)：
+\begin{lstlisting}
+(L113) D = 1.0 - sqrtRbRt*np.exp(1j*dPhi)
+\end{lstlisting}
+
+\textbf{この 2 行が「指数に \(L_{\mathrm{cav,opt}}\) を入れている」確定点。}
+\end{itemize}
+
+\subsection{(3) 反射係数が Gauge-B で来る（混在の入り口）}
+このスクリプトが反射係数を取る箇所：
+\begin{lstlisting}
+(L135) rb0, rt0 = rb_rt_cavity_side(nmap, d, lam)             # u=0
+(L145) rb_te, rt_te = rb_rt_cavity_side_u(nmap, d, lam, u, "TE")
+(L146) rb_tm, rt_tm = rb_rt_cavity_side_u(nmap, d, lam, u, "TM")
+\end{lstlisting}
+
+\noindent
+これらは（設計上）\textbf{EML界面参照（Gauge-B）}の \(r_b^{(B)},r_t^{(B)}\) と解釈すべきで、
+prime 分母に直に入れると混在になる。
+
+\subsection{(4) 混在を殺す処置：\_gauge\_retake を必ず通す}
+本パッチが追加した ``ゲージ分の取り直し'' の本体：
+
+\begin{lstlisting}
+(L079-L094) def _gauge_retake_rb_rt_prime(...):
+(L082-L088) S_b = sum_{ITO,pHTL,Rprime,HTL,EBL} Re(kz/k0)*d
+(L090)       S_t = Re(kz_ETL/k0)*d_ETL
+(L092)       phase_b = exp(-i*4*pi*S_b/lambda)
+(L093)       phase_t = exp(-i*4*pi*S_t/lambda)
+(L094)       return rb*phase_b, rt*phase_t
+\end{lstlisting}
+
+そして \textbf{反射係数を取った直後}に必ず通す：
+
+\begin{lstlisting}
+(L135-L140) u=0 branch:
+  rb0, rt0 = rb_rt_cavity_side(...)
+  rb0, rt0 = _gauge_retake_rb_rt_prime(lam, 0.0, rb0, rt0)
+
+(L145-L153) u!=0 branch:
+  rb_te, rt_te = rb_rt_cavity_side_u(...)
+  rb_tm, rt_tm = rb_rt_cavity_side_u(...)
+  rb_te, rt_te = _gauge_retake_rb_rt_prime(lam, u, rb_te, rt_te)
+  rb_tm, rt_tm = _gauge_retake_rb_rt_prime(lam, u, rb_tm, rt_tm)
+\end{lstlisting}
+
+\paragraph{再発防止の鉄則}
+\begin{itemize}
+  \item \textbf{D の指数に \(L_{\mathrm{cav,opt}}\) を使うなら、必ず retake 済みの \(r_b',r_t'\) を使う。}
+  \item 逆に retake を外したいなら、\textbf{指数を \(L_{\mathrm{eml,opt}}\) に変えて Gauge-B に統一}する。
+\end{itemize}
+
+\section{「間違えたかも？」を一発で検出する数値チェック}
+\subsection{チェックの目的}
+本当に
+\[
+r_b' r_t' e^{i4\pi L_{\mathrm{cav,opt}}/\lambda}
+=
+r_b^{(B)} r_t^{(B)} e^{i4\pi L_{\mathrm{eml,opt}}/\lambda}
+\]
+が（数値的に）一致しているかを \textbf{毎回自動で確認}する。
+
+\subsection{チェック手順（run\_fig4 にそのまま埋め込み可能）}
+例えば \(u\neq 0\) の枝で、retake 前後の量を保持し、以下を評価する：
+
+\begin{lstlisting}
+# before retake
+rbB_te, rtB_te = rb_rt_cavity_side_u(...)
+
+# after retake
+rbP_te, rtP_te = _gauge_retake_rb_rt_prime(lam, u, rbB_te, rtB_te)
+
+# build Lemlopt(u) in the same proxy convention
+Lemlopt = _kz_re(float(np.real(nmap["EML"])), u) * float(d["EML"])
+
+lhs = rbP_te * rtP_te * np.exp(1j * (4*np.pi*L_u/lam))       # prime form
+rhs = rbB_te * rtB_te * np.exp(1j * (4*np.pi*Lemlopt/lam))   # gauge-B form
+err = np.max(np.abs(lhs - rhs))
+print("Gauge consistency err =", err)
+\end{lstlisting}
+
+\noindent
+\textbf{期待値}：double 精度なら \(\sim 10^{-12}\) 程度（計算順序で多少上下）。
+
+\section{よくある事故パターン（ここを見れば必ず直る）}
+
+\subsection*{事故1：\(S_b\) に含める層を間違える}
+\textbf{原因}：prime 原点から EML 下端までの積分に入る層集合がずれる。\\
+\textbf{対策}：run\_fig4 の \texttt{\_gauge\_retake\_rb\_rt\_prime}（L82--L88）にある層集合
+\[
+\{\mathrm{ITO,pHTL,Rprime,HTL,EBL}\}
+\]
+が、あなたの stack 定義（optcoord が使う順序）と一致していることを毎回確認する。
+
+\subsection*{事故2：\(S_t\) を ETL 以外も含めてしまう}
+\textbf{原因}：prime の終点が ETL/cathode1 面であるのに、cathode1 の位相まで入れてしまう。\\
+\textbf{対策}：このスクリプトの prime 終点は \textbf{ETL終端}で固定。よって
+\[
+S_t=\text{ETL のみ}
+\]
+（L90）が正しい。
+
+\subsection*{事故3：位相用の \(k_z\) を複素屈折率で作ってしまう}
+\textbf{原因}：proxy の位相座標が「実数 \(n\)」で設計されているのに、
+複素 \(n\) を突っ込むと \(S_b,S_t\) が別物になり一致性が崩れる。\\
+\textbf{対策}：このスクリプトは \textbf{実数 \(n\)}で \(\Re\sqrt{n^2-u^2}\) を使う。
+それを \texttt{\_kz\_re}（L72--L76）で固定している。
+
+\subsection*{事故4：retake を TE にだけ適用、TM を忘れる}
+\textbf{対策}：L148--L149 で \textbf{TE/TM それぞれ}に適用していることを確認。
+
+\section*{まとめ（最短の再発防止ルール）}
+\begin{enumerate}
+  \item \textbf{分母の指数}に何を使っているかでゲージが決まる。\\
+  \(\exp(i4\pi L_{\mathrm{cav,opt}}/\lambda)\Rightarrow\) prime なので \(r_b',r_t'\)。\\
+  \(\exp(i4\pi L_{\mathrm{eml,opt}}/\lambda)\Rightarrow\) Gauge-B なので \(r_b^{(B)},r_t^{(B)}\)。
+  \item run\_fig4 は \(L_{\mathrm{cav,opt}}\) を使う。よって \textbf{retake が必須}。
+  \item retake は
+  \[
+  r_b' = r_b^{(B)}e^{-i4\pi S_b/\lambda},\quad
+  r_t' = r_t^{(B)}e^{-i4\pi S_t/\lambda}
+  \]
+  で、\(S_b\) の層集合と \(S_t=\)ETL のみを絶対に間違えない。
+  \item 間違えたかも？と思ったら、\textbf{lhs--rhs の一致チェック（err）}を出す。
+\end{enumerate}
+
+\end{document}

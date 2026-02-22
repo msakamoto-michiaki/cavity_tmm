@@ -1,0 +1,277 @@
+\begin{document}
+
+\section*{PyMoosh--TMMを用いたOLEDキャビティ設計（\texorpdfstring{$\phi_b=\pi$}{phi\_b=pi}固定, 参照面: ITO/pHTL \& ETL/cathode1）}
+
+本書は、既存の \texttt{phase2} 系コードの「場強（\(|E|^2\)）」および「キャビティ・フィルタ \(F(\lambda)\)」評価を、TMM（Transfer Matrix Method）部分のみ \texttt{PyMoosh} に置き換えて再実装したプログラムの仕様と数式を、簡略化せずにまとめたものである。ここでは法線（\(k_\parallel=0\)）・TE偏光（\texttt{PyMoosh}の \texttt{polarization=0}）を基本とする。
+
+\vspace{0.8em}
+\noindent
+\textbf{設計目的（今回のルーチン）}
+\begin{enumerate}
+\item 上側ミラー（cathode1厚）を与えたとき、\(\lambda_0=650\,\mathrm{nm}\) における共鳴条件を満たすように \(\text{HTL},\text{Rprime}\) を同率スケーリング係数 \(s\) で調整する。
+\item その後、追加の自由度として \(\text{ETL}\) 厚を微調整し、\(|E|^2\) のピーク位置が EML中心に一致するように \((s,\text{ETL})\) を微調整する。
+\end{enumerate}
+
+\section{(1) 参照面（Reference plane）とゲージ（Gauge）の定義}
+
+\subsection{構造と層の順序}
+本実装で扱う層は、空洞側（発光層を含む内部）を以下の順に並べる：
+\[
+\text{pHTL} \rightarrow \text{Rprime} \rightarrow \text{HTL} \rightarrow \text{EBL} \rightarrow \text{EML} \rightarrow \text{ETL}.
+\]
+これを内部層（internal layers）と呼ぶ。内部層の下側には ITO, anode, substrate があり、上側には cathode1, cathode, CPL, air がある。
+
+\subsection{参照面の定義}
+本ルーチンでは以下の 2 つの参照面を採用する。
+
+\begin{itemize}
+\item \textbf{下側参照面（bottom reference plane）}: \(\text{ITO}/\text{pHTL}\) 界面。
+  ここで「空洞側（内部側）」の入射媒質は \(\text{pHTL}\) とする。
+\item \textbf{上側参照面（top reference plane）}: \(\text{ETL}/\text{cathode1}\) 界面。
+  ここで「空洞側（内部側）」の入射媒質は \(\text{ETL}\) とする。
+\end{itemize}
+
+\subsection{ゲージ \(\{L_{\mathrm{cav}}, r_u', r_d'\}\)}
+上記参照面に対応して、キャビティの光学長と反射係数を次のように統一して定義する。
+
+\paragraph{(i) 光学長（単一パス）}
+層 \(i\) の複素屈折率を \(n_i = n_i' + i n_i''\)、物理厚を \(d_i\) とし、\textbf{単一パス光学長} \(L_{\mathrm{cav,opt}}\) を
+\[
+L_{\mathrm{cav,opt}} \equiv \sum_{i\in \{\text{pHTL,Rprime,HTL,EBL,EML,ETL}\}} n_i' d_i
+\]
+で定義する。これは \(\text{ITO}/\text{pHTL}\) 参照面から \(\text{ETL}/\text{cathode1}\) 参照面までの \(\int n'(z)\,dz\) に一致する。
+
+\paragraph{(ii) 光学座標（内部位置）}
+下側参照面（ITO/pHTL）を \(z=0\) とし、物理座標 \(z\) に対して光学座標 \(z_{\mathrm{opt}}(z)\) を
+\[
+z_{\mathrm{opt}}(z)\equiv \int_0^{z} n'(z')\,dz'
+\]
+で定義する。EML中心の光学座標は
+\[
+z_{\mathrm{opt,EML\,center}}=
+n'_{\mathrm{pHTL}}d_{\mathrm{pHTL}}+
+n'_{\mathrm{Rprime}}d_{\mathrm{Rprime}}+
+n'_{\mathrm{HTL}}d_{\mathrm{HTL}}+
+n'_{\mathrm{EBL}}d_{\mathrm{EBL}}+
+\frac{1}{2}n'_{\mathrm{EML}}d_{\mathrm{EML}}.
+\]
+
+\paragraph{(iii) 反射係数}
+\textbf{下側反射} \(r_u'\) は、入射媒質を \(\text{pHTL}\) とし、参照面 \(\text{ITO}/\text{pHTL}\) から見た
+\[
+\text{pHTL}\ \Big|\ \text{ITO} / \text{anode} / \text{substrate}
+\]
+の多層による複素反射係数として定義する（\(\texttt{PyMoosh}\) で計算）。
+
+\textbf{上側反射} \(r_d'\) は、入射媒質を \(\text{ETL}\) とし、参照面 \(\text{ETL}/\text{cathode1}\) から見た
+\[
+\text{ETL}\ \Big|\ \text{cathode1} / \text{cathode} / \text{CPL} / \text{air}
+\]
+の多層による複素反射係数として定義する（\(\texttt{PyMoosh}\) で計算）。
+
+\paragraph{(iv) 位相の定義と今回の制約}
+\[
+\phi_b \equiv \arg(r_u'),\qquad \phi_e \equiv \arg(r_d').
+\]
+ここで \(\arg\) は主値 \((-\pi,\pi]\) を返す（数値実装は \(\texttt{numpy.angle}\) に相当）。本ルーチンでは上側位相 \(\phi_e\) は計算で残す一方で、下側位相は
+\[
+\phi_b = \pi
+\]
+に固定する。数値実装では \(r_u'\) の絶対値を \(|r_u'|\) として
+\[
+r_u' \leftarrow -|r_u'|
+\]
+と置き換え、\(|r_u'|\) は保持しつつ位相のみ \(\pi\) に強制する。
+
+\section{(2) \(E\) と \(F(\lambda)\) の数式（phase2のmodeB形式）}
+
+\subsection{基本量}
+波長 \(\lambda\) に対し、反射率
+\[
+R_b(\lambda)=|r_u'(\lambda)|^2,\qquad R_t(\lambda)=|r_d'(\lambda)|^2
+\]
+および位相
+\[
+\phi_b(\lambda)=\arg(r_u'(\lambda)),\qquad \phi_e(\lambda)=\arg(r_d'(\lambda))
+\]
+を用いる。ここで下側位相は \(\phi_b(\lambda)\equiv \pi\) として扱う（\(\lambda\) ごとに強制）。
+
+\subsection{場強因子（\(|E|^2\) proxy）}
+本実装は、\texttt{phase2} の \texttt{cavity\_filter\_modeB} に一致する形で、内部位置 \(z_{\mathrm{opt}}\) における場強因子を
+\[
+F(\lambda; z_{\mathrm{opt}})\equiv \frac{G(\lambda; z_{\mathrm{opt}})}{D(\lambda)}
+\]
+として定義する。ここで
+
+\paragraph{分子（位置依存）}
+\[
+G(\lambda; z_{\mathrm{opt}})=
+1+R_b(\lambda)+2\sqrt{R_b(\lambda)}\cos\!\left(\phi_b(\lambda)+\frac{4\pi}{\lambda}z_{\mathrm{opt}}\right).
+\]
+
+\paragraph{分母（共鳴線形）}
+\[
+D(\lambda)=
+\left(1-\sqrt{R_b(\lambda)R_t(\lambda)}\right)^2+
+4\sqrt{R_b(\lambda)R_t(\lambda)}
+\sin^2\!\left(\frac{1}{2}\Delta\Phi(\lambda)\right),
+\]
+\[
+\Delta\Phi(\lambda)=\phi_b(\lambda)+\phi_e(\lambda)+\frac{4\pi}{\lambda}L_{\mathrm{cav,opt}}.
+\]
+
+\paragraph{EML中心での \(|E|^2\) proxy}
+\(|E|^2\) の代表値として、EML中心の光学座標 \(z_{\mathrm{opt,EML\,center}}\) を代入した
+\[
+|E|^2_{\mathrm{proxy}}(\lambda)\equiv F(\lambda; z_{\mathrm{opt,EML\,center}})
+\]
+を用いる。
+
+\subsection{スペクトル \(F(\lambda)\)}
+評価スペクトルは、EML中心での \(F(\lambda; z_{\mathrm{opt,EML\,center}})\) を \(\lambda\) で走査して得る。すなわち
+\[
+F(\lambda)\equiv F(\lambda; z_{\mathrm{opt,EML\,center}}).
+\]
+（実装では \(\lambda\in[450,800]\mathrm{nm}\) 等で離散化して計算し、最大値とFWHMを数値的に求める。）
+
+\section{(3) 共鳴条件と「EML中心に \(|E|^2\) ピーク」を持たせるアルゴリズム}
+
+\subsection{共鳴条件（位相条件）}
+法線（\(k_\parallel=0\)）で、共鳴の位相条件を
+\[
+2m\pi = \frac{4\pi}{\lambda_0}L_{\mathrm{cav,opt}} + \phi_b(\lambda_0)+\phi_e(\lambda_0)
+\]
+とする。ここで \(\lambda_0=650\,\mathrm{nm}\)、整数 \(m\)（今回は \(m=1\)）である。よって目標光学長は
+\[
+L_{\mathrm{cav,target}}=
+m\frac{\lambda_0}{2}-\frac{\lambda_0}{4\pi}\left(\phi_b(\lambda_0)+\phi_e(\lambda_0)\right).
+\]
+本ルーチンでは \(\phi_b(\lambda_0)=\pi\) 固定、\(\phi_e(\lambda_0)\) は PyMoosh 計算値である。
+
+\subsection{HTL+Rprimeの同率スケーリング \(s\)}
+\(\text{HTL}\) と \(\text{Rprime}\) の厚みを
+\[
+d_{\mathrm{HTL}}=s\,d_{\mathrm{HTL}}^{(0)},\qquad
+d_{\mathrm{Rprime}}=s\,d_{\mathrm{Rprime}}^{(0)}
+\]
+で同率スケーリングする（基準厚 \(d^{(0)}\) は \texttt{phase2} の既存値）。このとき
+\[
+L_{\mathrm{cav,opt}}(s,\mathrm{ETL})=
+L_{\mathrm{fixed}}(\mathrm{ETL}) + s\,L_{\mathrm{unit}}
+\]
+と書ける。ここで
+
+\[
+L_{\mathrm{unit}} \equiv
+n'_{\mathrm{HTL}} d_{\mathrm{HTL}}^{(0)}+
+n'_{\mathrm{Rprime}} d_{\mathrm{Rprime}}^{(0)},
+\]
+\[
+L_{\mathrm{fixed}}(\mathrm{ETL}) \equiv
+n'_{\mathrm{pHTL}} d_{\mathrm{pHTL}}+
+n'_{\mathrm{EBL}} d_{\mathrm{EBL}}+
+n'_{\mathrm{EML}} d_{\mathrm{EML}}+
+n'_{\mathrm{ETL}} d_{\mathrm{ETL}}.
+\]
+（注意：\(\mathrm{ETL}\) は後段の微調整変数なので \(L_{\mathrm{fixed}}\) に含める。）
+
+したがって、\textbf{共鳴条件を満たす \(s\) は解析的に}
+\[
+s(\mathrm{ETL})=
+\frac{L_{\mathrm{cav,target}}-L_{\mathrm{fixed}}(\mathrm{ETL})}{L_{\mathrm{unit}}}
+\]
+で決まる。
+
+\subsection{(s, ETL) 微調整による「EML中心にピーク」合わせ込み}
+共鳴条件を保ったまま \(|E|^2\) の腹位置を調整するため、次の方針を採る：
+
+\begin{enumerate}
+\item \(\mathrm{ETL}\) を候補値で走査する（粗探索：例 10--80\,nm を 1\,nm 刻み）。
+\item 各 \(\mathrm{ETL}\) に対して、上式で \(s(\mathrm{ETL})\) を即座に計算し、\textbf{必ず共鳴条件（\(\lambda_0\)）を維持}する。
+\item 得られた \((s,\mathrm{ETL})\) で、\(\lambda_0\) における \(|E|^2\) proxy を内部位置全域 \(z\) で評価し、
+\[
+z_{\mathrm{peak}}=\arg\max_z\ |E|^2_{\mathrm{proxy}}(\lambda_0; z)
+\]
+を求める。
+\item EML中心（物理座標）を
+\[
+z_{\mathrm{EML,center}}=
+d_{\mathrm{pHTL}}+d_{\mathrm{Rprime}}+d_{\mathrm{HTL}}+d_{\mathrm{EBL}}+\frac{1}{2}d_{\mathrm{EML}}
+\]
+とし、誤差
+\[
+\varepsilon(\mathrm{ETL})=\left|z_{\mathrm{peak}}-z_{\mathrm{EML,center}}\right|
+\]
+を計算する。
+\item \(\varepsilon\) が最小の \(\mathrm{ETL}\) を粗探索で決め、周辺（例 \(\pm 3\)nm）を 0.1nm 刻みで細探索する。
+\end{enumerate}
+
+この方法は、探索変数を \(\mathrm{ETL}\) の 1 変数に落とし込みつつ、共鳴条件は解析式 \(s(\mathrm{ETL})\) により常に満たすため、安定かつ高速に「EML中心へ腹を移動」できる。
+
+\section{(4) プログラムの詳細説明（実装の要点）}
+
+\subsection{使用ライブラリ}
+\begin{itemize}
+\item \textbf{PyMoosh}: 多層反射係数 \(r\) の計算に使用（S-matrixベース）。
+\item \textbf{NumPy}: 配列計算、位相、走査。
+\item \textbf{Matplotlib}: \(F(\lambda)\) および \(|E|^2(z)\) のプロット。
+\end{itemize}
+
+\subsection{反射係数の計算（PyMoosh）}
+\texttt{PyMoosh.coefficient(structure, wavelength, theta, polarization)} を用いる。層列は
+\[
+\text{incident medium} \rightarrow (\text{finite layers}) \rightarrow \text{substrate (semi-infinite)}
+\]
+として与える。法線入射なので \(\theta=0\) を指定する。偏光は TE を \texttt{polarization=0} とする。
+
+\paragraph{下側（bottom）}
+入射媒質：pHTL、有限層：ITO, anode、基板：substrate。
+得られる反射 \(r_b(\lambda)\) から \(|r_b(\lambda)|\) を取り、位相固定のため
+\[
+r_u'(\lambda)\leftarrow -|r_b(\lambda)|
+\]
+とする。
+
+\paragraph{上側（top）}
+入射媒質：ETL、有限層：cathode1, cathode, CPL、基板：air。
+\[
+r_d'(\lambda)=r_t(\lambda)
+\]
+をそのまま用いる（\(\phi_e(\lambda)=\arg(r_t(\lambda))\)）。
+
+\subsection{光学長と光学座標の計算}
+\paragraph{単一パス光学長}
+\[
+L_{\mathrm{cav,opt}}=\sum n'_i d_i
+\]
+を内部層（pHTL..ETL）で計算する。
+
+\paragraph{EML中心の \(z_{\mathrm{opt}}\)}
+内部層の順序に沿って \(n'd\) を積算し、EML中心では EML分の半分だけ加算する。
+
+\paragraph{\(|E|^2(z)\) 用の \(z\to z_{\mathrm{opt}}\) マッピング}
+内部の物理座標 \(z\) を十分細かくサンプルし（例 2000--2500点）、各層区間内では
+\[
+z_{\mathrm{opt}}(z)=z_{\mathrm{opt}}(z_{\mathrm{layer\,start}})+n'_i (z-z_{\mathrm{layer\,start}})
+\]
+として区分線形で計算する。
+
+\subsection{最適化の実装（粗探索＋細探索）}
+\begin{enumerate}
+\item \textbf{粗探索}: \(\mathrm{ETL}=10\)nm から 80nm まで 1nm 刻みで走査。
+\item 各 \(\mathrm{ETL}\) で \(s(\mathrm{ETL})\) を解析式で計算。
+\item \(\lambda_0=650\)nm で \(|E|^2(z)\) を計算し、\(z_{\mathrm{peak}}\) を求め、\(\varepsilon(\mathrm{ETL})\) を評価。
+\item \textbf{細探索}: 粗探索の最良 \(\mathrm{ETL}\) の \(\pm 3\)nm を 0.1nm 刻みで再評価し最良点を採用。
+\end{enumerate}
+
+\subsection{出力}
+\begin{itemize}
+\item 最適解（\(\mathrm{ETL}, s, \text{HTL}, \text{Rprime}, T, L_{\mathrm{cav,opt}}\) 等）を表形式で出力。
+\item \(F(\lambda)\) をプロットし、ピーク波長と FWHM を表示。
+\item \(|E|^2(z)\) をプロットし、EML領域（開始・終了）をシェーディング、EML中心と \(|E|^2\) ピーク位置を線で表示。
+\end{itemize}
+
+\subsection*{備考}
+本書の \(F(\lambda)\) は \texttt{phase2} の modeB（G/D）に一致する「場強 proxy」であり、厳密な電磁場分布（多層内部の前進波・後退波をTMMで再構成）そのものではない。しかし、反射係数の複素位相と振幅に依存する共鳴の線形・増強の評価としては \texttt{phase2} と同一の比較が可能である。
+
+\end{document}

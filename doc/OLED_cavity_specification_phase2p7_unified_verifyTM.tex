@@ -1,0 +1,278 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[margin=24mm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{mathtools}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{physics}
+\setlength{\parskip}{0.4em}
+\setlength{\parindent}{0em}
+
+\title{OLED Cavity仕様書\\
+\large verifyTM記法に統一したコード再監査版}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{目的と今回の修正点}
+本書は \texttt{phase2p7.tar} と \texttt{verify.tar} の実コードを照合し，
+記法を \texttt{verifyTM.tex} の流儀（B/T面定義式 + rewrap写像式）に統一した仕様書である．
+
+主修正は以下：
+\begin{itemize}[leftmargin=1.5em]
+\item Bottom / Top の「巻き戻し層」と「終端反射の定義面」を厳密に分離して記述
+\item 比較式
+\[
+r_{\mathrm{rewrap,bot/top}}^{(\sigma)} \stackrel{?}{=} r_{\mathrm{full,bot/top}}^{(\sigma)}
+\]
+に統一
+\item 全モジュール再点検結果（記述ミス有無・実装上注意）を反映
+\end{itemize}
+
+\section{記法（verifyTM流儀）}
+偏光 \(\sigma\in\{s,p\}\)，
+\[
+u=\frac{k_\parallel}{k_0},\qquad k_0=\frac{2\pi}{\lambda}.
+\]
+
+PyMoosh整合規約（\(\mu=1,\ \varepsilon=n^2\)）:
+\[
+k_{z,j}=k_0\sqrt{\varepsilon_j-u^2},\qquad \Im(k_{z,j})\ge 0,
+\]
+\[
+b_j^{(s)}=k_{z,j},\qquad b_j^{(p)}=\frac{k_{z,j}}{\varepsilon_j},
+\]
+\[
+r_{j,k}^{(\sigma)}=\frac{b_j^{(\sigma)}-b_k^{(\sigma)}}{b_j^{(\sigma)}+b_k^{(\sigma)}}.
+\]
+
+再帰演算子 \(\mathcal W\) を
+\[
+\mathcal W\!\left(n_{\mathrm{inc}};\{(n_1,d_1),\dots,(n_N,d_N)\};r_{\mathrm{term}}^{(\sigma)}\right)
+\]
+と書く．内部再帰は
+\[
+r^{(N)}=r_{\mathrm{term}}^{(\sigma)},
+\]
+\[
+r^{(j-1)}
+=\frac{r_{j-1,j}^{(\sigma)}+r^{(j)}e^{2ik_{z,j}d_j}}
+{1+r_{j-1,j}^{(\sigma)}r^{(j)}e^{2ik_{z,j}d_j}},
+\quad (j=N,\dots,1)
+\]
+で，最終値 \(r^{(0)}\) を返す．
+
+\section{B/T/S面の厳密定義}
+\begin{itemize}[leftmargin=1.5em]
+\item B面（Bottom終端反射の定義面）: \(pHTL|ITO\)（pHTL側から見た反射）
+\item T面（Top終端反射の定義面）: \(ETL|cathode1\)（ETL側から見た反射）
+\item S面: EML中心
+\end{itemize}
+
+注：「B=ITO/pHTL」「T=ETL/cathode1」は境界名の略記であり，
+反射係数の入射側は上記のとおり pHTL側 / ETL側で定義する．
+
+\section{Bottom/Topのrewrapとfull-stack比較式}
+
+\subsection{Bottom}
+終端反射:
+\[
+r_B^{(\sigma)}(u,\lambda)
+=
+r^{(\sigma)}\!\left(
+\mathrm{incident}=pHTL,\;
+\mathrm{layers}=[ITO,anode],\;
+\mathrm{substrate}=substrate
+\right).
+\]
+
+rewrap（EML|EBL面へ）:
+\[
+r_{\mathrm{rewrap,bot}}^{(\sigma)}(u,\lambda)
+=
+\mathcal W\!\left(
+EML;\;
+[(EBL,d_{EBL}),(HTL,d_{HTL}),(Rprime,d_{Rprime}),(pHTL,d_{pHTL})];\;
+r_B^{(\sigma)}
+\right).
+\]
+
+full-stack:
+\[
+r_{\mathrm{full,bot}}^{(\sigma)}(u,\lambda)
+=
+r^{(\sigma)}\!\left(
+\mathrm{incident}=EML,\;
+\mathrm{layers}=[EBL,HTL,Rprime,pHTL,ITO,anode],\;
+\mathrm{substrate}=substrate
+\right).
+\]
+
+検証条件:
+\[
+r_{\mathrm{rewrap,bot}}^{(\sigma)}
+\stackrel{?}{=}
+r_{\mathrm{full,bot}}^{(\sigma)}.
+\]
+
+\subsection{Top}
+終端反射:
+\[
+r_T^{(\sigma)}(u,\lambda)
+=
+r^{(\sigma)}\!\left(
+\mathrm{incident}=ETL,\;
+\mathrm{layers}=[cathode1,cathode,CPL],\;
+\mathrm{substrate}=air
+\right).
+\]
+
+rewrap（EML|ETL面へ）:
+\[
+r_{\mathrm{rewrap,top}}^{(\sigma)}(u,\lambda)
+=
+\mathcal W\!\left(
+EML;\;
+[(ETL,d_{ETL})];\;
+r_T^{(\sigma)}
+\right).
+\]
+
+full-stack:
+\[
+r_{\mathrm{full,top}}^{(\sigma)}(u,\lambda)
+=
+r^{(\sigma)}\!\left(
+\mathrm{incident}=EML,\;
+\mathrm{layers}=[ETL,cathode1,cathode,CPL],\;
+\mathrm{substrate}=air
+\right).
+\]
+
+検証条件:
+\[
+r_{\mathrm{rewrap,top}}^{(\sigma)}
+\stackrel{?}{=}
+r_{\mathrm{full,top}}^{(\sigma)}.
+\]
+
+\section{S面（EML中心）への写像とFP proxy}
+EML境界反射を \(r_{EML/EBL}^{(\sigma)}, r_{EML/ETL}^{(\sigma)}\) とすると
+\[
+\Delta z=\frac{d_{EML}}{2},\qquad
+k_{z,EML}=k_0\sqrt{\varepsilon_{EML}-u^2},
+\]
+\[
+r_u^{(S,\sigma)}=r_{EML/EBL}^{(\sigma)}e^{2ik_{z,EML}\Delta z},\qquad
+r_d^{(S,\sigma)}=r_{EML/ETL}^{(\sigma)}e^{2ik_{z,EML}\Delta z},
+\]
+\[
+F^{(\sigma)}(\lambda,u)=
+\frac{|1+r_u^{(S,\sigma)}|^2}{|1-r_u^{(S,\sigma)}r_d^{(S,\sigma)}|^2}.
+\]
+
+\section{モジュール別仕様（再監査反映）}
+
+\subsection{(1) \texttt{tmm\_rewrap\_utils.py}}
+\begin{itemize}[leftmargin=1.5em]
+\item 上記 \(\mathcal W\) を実装
+\item TE/TM は \(b=k_z,\;k_z/\varepsilon\) 規約
+\item \(k_z\) 分岐は \(\Im(k_z)\ge 0\) で固定
+\item Bottom再帰層: \([EBL,HTL,Rprime,pHTL]\)
+\item Top再帰層: \([ETL]\)
+\end{itemize}
+入力: \texttt{n0,d,lam\_nm,u,rB\_pol,rT\_pol,pol}，
+出力: \((ru_S,rd_S)\) および \texttt{F}．
+
+\subsection{(2) \texttt{oled\_cavity**}}
+対象:
+\begin{itemize}[leftmargin=1.5em]
+\item \texttt{oled\_cavity\_pymoosh\_sourceplane\_FP\_finetune.py}
+\item \texttt{oled\_cavity\_pymoosh\_sourceplane\_FP\_finetune\_compat\_TMMrewrap.py}
+\end{itemize}
+
+位相条件:
+\[
+L_{\mathrm{target}}=m\frac{\lambda_0}{2}
+-\frac{\lambda_0}{4\pi}(\phi_b+\phi_e),\qquad \phi_b=\pi,
+\]
+\[
+s=\frac{L_{\mathrm{target}}-L_{\mathrm{fixed}}}{L_{\mathrm{unit}}}.
+\]
+B面位相固定は \(r_B\leftarrow-|r_B|\) で実施．
+ETL粗探索（1 nm）\(\to\)細探索（0.1 nm），
+目的関数は EML中心と \(|E|^2\)ピークの距離．
+
+実装差：
+\begin{itemize}[leftmargin=1.5em]
+\item \texttt{finetune.py}: B/T参照の位相シフト式（\texttt{F\_BT}と理論等価）
+\item \texttt{compat\_TMMrewrap.py}: 再帰TMM写像後に \(F\) 評価
+\end{itemize}
+
+監査メモ：\texttt{compat\_TMMrewrap.py} は fine-scan で early return（互換挙動）を保持．
+
+\subsection{(3) \texttt{reproduce**}}
+対象:
+\texttt{reproduce\_phase2\_step2\_u\_dependence\_pymoosh\_sourceplane\_FP\_TMMrewrap.py}
+
+\[
+F_{TE/TM}(\lambda,u)\ \text{をS面再帰TMMで算出し，}
+\quad K_{\mathrm{iso}}=\frac{2}{3}K_h+\frac{1}{3}K_v.
+\]
+
+Fig.4変換:
+\[
+u_{\mathrm{req}}=
+\frac{\lambda[\mathrm{nm}]\times 10^{-9}}{2\pi}k_\parallel.
+\]
+
+実装上，
+\(\theta\) は \texttt{theta\_from\_u\_branch\_fixed} で枝固定．
+既定では \(K_h=F_{TE},\ K_v=10^{-10}\)（簡略版）．
+
+\subsection{(4) \texttt{verify}（bottom/top）}
+対象:
+\begin{itemize}[leftmargin=1.5em]
+\item \texttt{tmm\_rewrap\_utils\_verify.py}
+\item \texttt{test\_verify\_bottom\_rewrap\_vs\_fullstack\_v3.py}
+\item \texttt{test\_verify\_top\_rewrap\_vs\_fullstack\_v3.py}
+\end{itemize}
+
+誤差定義:
+\[
+\Delta r=|r_{\mathrm{rewrap}}-r_{\mathrm{full}}|.
+\]
+
+実測（同梱スクリプト実行）:
+\begin{itemize}[leftmargin=1.5em]
+\item Bottom: \(\max|\Delta r|_{TE}=3.333\times10^{-15}\), \(\max|\Delta r|_{TM}=1.355\times10^{-15}\)
+\item Top: \(\max|\Delta r|_{TE}=1.746\times10^{-14}\), \(\max|\Delta r|_{TM}=4.220\times10^{-14}\)
+\end{itemize}
+
+\section{再監査結論}
+\begin{enumerate}[leftmargin=1.8em]
+\item Bottom/Top巻き戻しは verify と整合：
+Bottomは終端 \(r_B\) 生成後に \([EBL,HTL,Rprime,pHTL]\) を写像，
+Topは終端 \(r_T\) 生成後に \([ETL]\) を写像．
+\item 前回問題は実装ミスではなく仕様書側の省略表現（誤読誘発）．
+\item 実装注意点として，
+\texttt{compat\_TMMrewrap.py} の early return と
+\texttt{reproduce**} の \(K_h/K_v\) 簡略化を明記すべき．
+\end{enumerate}
+
+\section{実行コマンド}
+\begin{verbatim}
+# verify
+python test_verify_bottom_rewrap_vs_fullstack_v3.py
+python test_verify_top_rewrap_vs_fullstack_v3.py
+
+# phase2p7
+python oled_cavity_pymoosh_sourceplane_FP_finetune.py
+python oled_cavity_pymoosh_sourceplane_FP_finetune_compat_TMMrewrap.py
+python reproduce_phase2_step2_u_dependence_pymoosh_sourceplane_FP_TMMrewrap.py
+\end{verbatim}
+
+\end{document}

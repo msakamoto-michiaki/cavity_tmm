@@ -1,0 +1,481 @@
+
+\section*{Source plane 参照へ移したときの参照面・ゲージ・位相規約の整理（省略なし）}
+
+本節では、現状の proxy キャビティ関数 \(F(\lambda,u)\) および将来の dyadic Green 関数（DG）実装に向けて、
+参照面（reference plane）とゲージ（gauge）の取り方、ならびに
+\(\phi_b=\pi\) 固定規約を、\emph{source plane（発光点）参照}へ統一するための手順を省略なくまとめる。
+ここで \(\lambda\) は波長、\(k_0=2\pi/\lambda\)、
+\(k_\parallel\) は面内波数、正規化面内波数を
+\begin{equation}
+u \equiv \frac{k_\parallel}{k_0}
+\end{equation}
+とする（層内角度は \(u=n\sin\theta\) に相当する）。
+
+\subsection*{1. 参照面（reference planes）の定義}
+
+本議論では以下の3つの参照面を導入する。
+
+\begin{itemize}
+\item Bottom boundary plane（B面）：
+\(\mathrm{ITO/pHTL}\) 界面。下側ミラー反射係数の参照面。
+\item Top boundary plane（T面）：
+\(\mathrm{ETL/cathode1}\) 界面。上側ミラー反射係数の参照面。
+\item Source plane（S面）：
+発光双極子（ソース）が存在する面。通常は EML 内の発光位置（例：EML中心）。
+\end{itemize}
+
+以後、量の添字 \(^{(B)}\), \(^{(T)}\), \(^{(S)}\) は、それぞれ B面・T面・S面を参照面として定義された量であることを示す。
+
+\subsection*{2. ゲージ（gauge）の定義：boundary gauge と source gauge}
+
+\subsubsection*{2.1 Boundary gauge（現状の規約）}
+
+現状の proxy 実装では、キャビティの幾何（位相進み）と両端ミラー反射を、
+B面・T面で参照した次のゲージで表すのが自然である：
+
+\begin{equation}
+\boxed{
+\mathcal{G}_{BT}
+\equiv
+\left\{
+L_{BT},\; r_u^{(B)},\; r_d^{(T)}
+\right\}
+}
+\end{equation}
+
+ここで
+
+\begin{itemize}
+\item \(L_{BT}\)：B面 \(\rightarrow\) T面のキャビティ長（以下で定義する光学位相積算量）。
+\item \(r_u^{(B)}(\lambda,u)\)：B面から見た下側ミラー（ITO/anode/substrate 側）の複素反射係数。
+\item \(r_d^{(T)}(\lambda,u)\)：T面から見た上側ミラー（cathode1/cathode/CPL/air 側）の複素反射係数。
+\end{itemize}
+
+\subsubsection*{2.2 Source gauge（DG および複素分母 \(D\) を扱う際に自然な規約）}
+
+dyadic Green 関数ではソース位置 \(\mathbf{r}_s\)（= source plane）での自己相互作用
+\(\mathbf{G}(\mathbf{r}_s,\mathbf{r}_s)\) を扱うため、
+反射係数もソース位置で参照した方が式が単純になる。よって source gauge を
+
+\begin{equation}
+\boxed{
+\mathcal{G}_{S}
+\equiv
+\left\{
+r_u^{(S)},\; r_d^{(S)}
+\right\}
+}
+\end{equation}
+
+として定義する。
+
+\paragraph{重要：}
+source gauge には境界間の ``長さ'' として単独の \(L\) を含めない表記を採用した。
+理由は、S面参照では ``長さ'' は
+\emph{S面からB面へ、S面からT面へ} の位相積算 \(\Phi_{SB}, \Phi_{ST}\)
+（次節参照）として自然に導入されるためである。
+
+\subsection*{3. \(L_S\)（あるいは source 参照の長さ）の意味：EML膜厚か？}
+
+ユーザの質問：「\(L_S\) は具体的に何か。EML膜厚か？」に対し、結論を明記する。
+
+\begin{equation}
+\boxed{
+L_S\ \text{は一般に ``EML膜厚'' ではない。}
+}
+\end{equation}
+
+S面は EML 内の任意の発光位置（例：EML中心）である。
+DG や source gauge を用いる場合に必要なのは、
+S面から境界面までの \emph{伝搬位相（複素位相）} であり、
+それは EML 膜厚だけで決まらず、S面から境界面までに存在する
+\emph{すべての層（pHTL, Rprime, HTL, EBL, EML, ETL 等）} の寄与を含む。
+
+よって、S面参照における ``長さ'' は 1つの実数 \(L_S\) というより、
+以下で定義する位相積算量 \(\Phi_{SB}(\lambda,u)\) と \(\Phi_{ST}(\lambda,u)\)
+（複素一般）で表すのが正確である。
+
+\subsubsection*{3.1 層ごとの縦波数 \(k_{z,i}\)}
+
+多層 \(i\) における縦波数（TE/TMごとに定義可能）を
+
+\begin{equation}
+k_{z,i}(\lambda,u) = k_0\,\sqrt{n_i(\lambda)^2 - u^2}
+\end{equation}
+
+と定義する（ここで \(n_i\) は一般に複素屈折率）。
+proxy の簡略化として \(n_i(\lambda)\approx n_i'+i n_i''\) を波長独立とする場合もある。
+
+\subsubsection*{3.2 S面から境界面までの複素位相積算（これが ``source 参照の長さ''）}
+
+\paragraph{S面 \(\rightarrow\) B面（下側）}
+S面から B面までの距離区間に含まれる層集合を \(\mathcal{P}_{SB}\) とし、
+その複素位相積算を
+
+\begin{equation}
+\boxed{
+\Phi_{SB}(\lambda,u) \equiv \sum_{i\in\mathcal{P}_{SB}} k_{z,i}(\lambda,u)\, d_i
+}
+\end{equation}
+
+と定義する。ここで \(d_i\) は層 \(i\) の膜厚。
+
+\paragraph{S面 \(\rightarrow\) T面（上側）}
+同様に S面から T面までの区間に含まれる層集合を \(\mathcal{P}_{ST}\) とし、
+
+\begin{equation}
+\boxed{
+\Phi_{ST}(\lambda,u) \equiv \sum_{i\in\mathcal{P}_{ST}} k_{z,i}(\lambda,u)\, d_i
+}
+\end{equation}
+
+と定義する。
+
+\paragraph{備考（EML中心の場合）}
+S面が EML中心の場合、\(\mathcal{P}_{SB}\) には
+EMLの半分厚（\(d_{\mathrm{EML}}/2\)）を含み、
+\(\mathcal{P}_{ST}\) にも EMLの残り半分厚を含む。
+しかしそれは ``EML膜厚'' のみではなく、
+S面から境界までの全積層が寄与する。
+
+\subsection*{4. 反射係数の参照面変換（boundary \(\rightarrow\) source）}
+
+\subsubsection*{4.1 下側反射係数 \(r_u\)：B面で計算し、B面で \(\phi_b=\pi\) 固定し、S面へ変換する}
+
+PyMoosh 等により B面参照の生の反射係数（偏光 \(p=\mathrm{TE,TM}\)）を
+
+\begin{equation}
+r_{u,\mathrm{raw}}^{(B),p}(\lambda,u)
+\end{equation}
+
+とする。現行規約として bottom 側位相を固定する（\(\phi_b=\pi\)）ために
+
+\begin{equation}
+\boxed{
+r_u^{(B),p}(\lambda,u)\ \leftarrow\ -\left|r_{u,\mathrm{raw}}^{(B),p}(\lambda,u)\right|
+}
+\qquad\Longrightarrow\qquad
+\boxed{\phi_b^{(B),p}(\lambda,u)=\pi}
+\end{equation}
+
+を適用する。
+
+次に、B面参照の反射係数を source plane（S面）へ参照面変換する。
+参照面変換は「S面で観測した反射は、B面での反射に
+S面\(\rightarrow\)B面の往復位相 \(2\Phi_{SB}\) を掛ける」ことに対応し、
+
+\begin{equation}
+\boxed{
+r_u^{(S),p}(\lambda,u)
+=
+r_u^{(B),p}(\lambda,u)\,
+\exp\!\left(2i\,\Phi_{SB}(\lambda,u)\right)
+}
+\end{equation}
+
+となる（位相の符号は ``往復位相'' の定義に依存するが、ここでは上式を規約として採用する）。
+
+\paragraph{重要：}
+この結果、S面での bottom 位相 \(\phi_b^{(S),p}=\arg r_u^{(S),p}\) は
+
+\begin{equation}
+\boxed{
+\phi_b^{(S),p}(\lambda,u)
+=
+\pi + 2\,\Re\!\left[\Phi_{SB}(\lambda,u)\right]
+}
+\end{equation}
+
+となり、一般に \(\pi\) 固定ではない。
+これは ``固定をB面で行った'' ことに整合する自然な帰結であり、矛盾ではない。
+
+\subsubsection*{4.2 上側反射係数 \(r_d\)：T面で計算し、S面へ変換する（位相固定は行わない）}
+
+上側は T面参照で PyMoosh 等により
+
+\begin{equation}
+r_d^{(T),p}(\lambda,u)=\left|r_d^{(T),p}\right|e^{i\phi_e^{(T),p}}
+\end{equation}
+
+を得る。ここで
+
+\begin{equation}
+\boxed{
+\phi_e^{(T),p}(\lambda,u)=\arg\left(r_d^{(T),p}(\lambda,u)\right)
+}
+\end{equation}
+
+であり、これは PyMoosh の計算結果をそのまま採用する（固定はしない）。
+
+参照面を S面へ揃えるため、T面参照の反射係数を S面へ変換する：
+
+\begin{equation}
+\boxed{
+r_d^{(S),p}(\lambda,u)
+=
+r_d^{(T),p}(\lambda,u)\,
+\exp\!\left(2i\,\Phi_{ST}(\lambda,u)\right)
+}
+\end{equation}
+
+したがって、S面参照の top 位相は
+
+\begin{equation}
+\boxed{
+\phi_e^{(S),p}(\lambda,u)
+=
+\arg\left(r_d^{(S),p}(\lambda,u)\right)
+=
+\phi_e^{(T),p}(\lambda,u)+2\,\Re\!\left[\Phi_{ST}(\lambda,u)\right]
+}
+\end{equation}
+
+となる。
+
+\subsection*{5. S面参照に揃えたゲージと detuning の定義（mod \(2\pi\) 表現）}
+
+S面参照に揃えた bottom/top の複素反射係数が得られたとき、
+振幅レベルでの多重反射母関数（複素分母）を
+
+\begin{equation}
+\boxed{
+D^{p}(\lambda,u)
+=
+1
+-
+r_u^{(S),p}(\lambda,u)\,
+r_d^{(S),p}(\lambda,u)
+}
+\end{equation}
+
+と定義する（DGではこの \(D^p\) が複素のまま現れる）。
+
+位相 detuning を符号問題なしに評価したい場合、mod \(2\pi\) で
+
+\begin{equation}
+\boxed{
+\Delta^{p}(\lambda,u)
+=
+\arg\!\Big(r_u^{(S),p}(\lambda,u)\,r_d^{(S),p}(\lambda,u)\Big)
+\quad(\mathrm{mod}\ 2\pi)
+}
+\end{equation}
+
+と定義できる。
+
+\subsection*{6. まとめ（参照面・ゲージ・\(\phi_b\)・\(\phi_e\) の一貫な取り扱い）}
+
+本節の方針（boundaryで \(\phi_b=\pi\) 固定を行い、sourceへ参照面変換する）をまとめる。
+
+\begin{enumerate}
+\item 参照面は B面（ITO/pHTL）, T面（ETL/cathode1）, S面（EML内発光位置）を定義する。
+\item 反射係数はまず boundary 参照で計算する：
+\(r_{u,\mathrm{raw}}^{(B),p}(\lambda,u)\), \(r_d^{(T),p}(\lambda,u)\).
+\item bottom は boundary（B面）で位相固定する：
+\(r_u^{(B),p}\leftarrow-|r_{u,\mathrm{raw}}^{(B),p}|\Rightarrow \phi_b^{(B),p}=\pi\).
+\item top は位相固定せず PyMoosh の位相を採用する：
+\(\phi_e^{(T),p}=\arg r_d^{(T),p}\).
+\item DG/複素分母 \(D\) を source plane 参照で扱うため、
+S面への参照面変換を行う：
+\[
+r_u^{(S),p}=r_u^{(B),p}e^{2i\Phi_{SB}},\quad
+r_d^{(S),p}=r_d^{(T),p}e^{2i\Phi_{ST}}.
+\]
+\item \(\Phi_{SB}\), \(\Phi_{ST}\) は EML膜厚そのものではなく、
+S面から境界面までの区間に含まれる全層の縦波数積算
+\(\Phi=\sum k_{z,i}d_i\) で定義される（複素一般）。
+\item S面参照の複素分母（DG核）は
+\(D^p=1-r_u^{(S),p}r_d^{(S),p}\) と定義され、
+位相 detuning は \(\arg(r_u^{(S)}r_d^{(S)})\) を mod \(2\pi\) で評価できる。
+\end{enumerate}
+
+
+\section*{Proxy \(F(\lambda,u)\) に \(L_{\mathrm{cav}}\) と \(L_S\) は現れるか？（参照面ごとの明示）}
+
+本節では、現在用いている proxy キャビティ関数 \(F(\lambda,u)\) において、
+\(\boxed{L_{\mathrm{cav}}}\)（B--T参照のキャビティ光学長）と
+\(\boxed{L_S}\)（S参照の ``距離''）が式の中にどのように現れるかを、
+参照面の選び方（B--T参照 / S参照）ごとに省略なく整理する。
+
+ここで \(\lambda\) は波長、\(k_0=2\pi/\lambda\)、
+面内波数 \(k_\parallel\) に対し
+\begin{equation}
+u\equiv \frac{k_\parallel}{k_0}
+\end{equation}
+を用いる。
+
+\subsection*{1. 結論（先に要点）}
+
+\begin{itemize}
+\item B面（ITO/pHTL）とT面（ETL/cathode1）を参照面に取る
+\(\boxed{\text{B--T参照}}\)では、proxy \(F\) の分母に
+\(\boxed{L_{\mathrm{cav}}=L_{BT}}\) が \emph{明示的に} 現れる。
+\item S面（source plane）を参照面に取る
+\(\boxed{\text{S参照}}\)では、proxy \(F\) を適切に書き換えると
+\(\boxed{L_{\mathrm{cav}}}\) を \emph{式から消し込む}（反射係数へ吸収する）ことができる。
+その代わり、source 位置依存として
+\(\boxed{L_{SB}}\) と \(\boxed{L_{ST}}\)（S\(\rightarrow\)B, S\(\rightarrow\)T の片道光学長）
+が \emph{必ず} 現れる。
+\item 従って S参照における ``距離'' は本質的に1本のスカラー \(L_S\) ではなく、
+\(\boxed{(L_{SB},L_{ST})}\) の2本（あるいは等価な位相積算 \((\Phi_{SB},\Phi_{ST})\)）である。
+\end{itemize}
+
+\subsection*{2. B--T参照（boundary gauge）における proxy \(F\) と \(L_{\mathrm{cav}}\)}
+
+B面（ITO/pHTL）とT面（ETL/cathode1）を参照面に取る場合、
+反射係数を
+\begin{equation}
+r_u^{(B)}(\lambda,u),\qquad r_d^{(T)}(\lambda,u)
+\end{equation}
+と表す（それぞれ B面参照の下側ミラー、T面参照の上側ミラー反射係数）。
+
+このとき proxy（Fabry--Pérot 型強度プロキシ）の代表的な書き方は
+\begin{equation}
+\boxed{
+F_{BT}(\lambda,u;z)
+=
+\frac{
+\left|1+r_u^{(B)}(\lambda,u)\exp\!\left(i\frac{4\pi}{\lambda}\,z\right)\right|^2
+}{
+\left|1-r_u^{(B)}(\lambda,u)\,r_d^{(T)}(\lambda,u)\exp\!\left(i\frac{4\pi}{\lambda}\,L_{BT}(u)\right)\right|^2
+}
+}
+\label{eq:F_BT_FP}
+\end{equation}
+である（ここで \(z\) は B面から source 点までの ``光学距離'' を表す）。
+
+\paragraph{ここで \(L_{\mathrm{cav}}\) は明示的に現れる。}
+B--T参照のキャビティ光学長は
+\begin{equation}
+\boxed{
+L_{\mathrm{cav}}(u)\equiv L_{BT}(u)
+}
+\end{equation}
+であり、式\eqref{eq:F_BT_FP} の分母指数にそのまま入っている。
+したがって
+\[
+\boxed{\text{B--T参照の proxy \(F\) では \(L_{\mathrm{cav}}\) が必ず現れる。}}
+\]
+
+\paragraph{\(z\) は何か：B面基準の source 位置である。}
+B--T参照では source の位置は
+\begin{equation}
+\boxed{
+z \equiv L_{BS}(u)
+}
+\end{equation}
+（B面\(\rightarrow\)S面の片道光学長）に対応する。
+よって B--T参照では ``距離'' として
+\(\boxed{L_{BT}}\) と \(\boxed{L_{BS}}\) が現れる構造になっている。
+
+\subsection*{3. S参照（source gauge）に書き換えた場合に現れる ``距離''}
+
+S参照では反射係数を
+\begin{equation}
+r_u^{(S)}(\lambda,u),\qquad r_d^{(S)}(\lambda,u)
+\end{equation}
+として、S面から見た下側・上側の反射係数を用いる。
+
+\subsubsection*{3.1 S参照での ``距離'' は 1本ではなく 2本が自然}
+
+S面を基準にすると、B面やT面までの距離は
+\emph{方向ごとに} 2本存在する：
+
+\begin{equation}
+\boxed{
+L_{SB}(u)\ \text{（S\(\rightarrow\)B）},\qquad
+L_{ST}(u)\ \text{（S\(\rightarrow\)T）}
+}
+\end{equation}
+
+さらに B--T 全長は常に
+\begin{equation}
+\boxed{
+L_{BT}(u)=L_{SB}(u)+L_{ST}(u)
+}
+\end{equation}
+として復元できる。
+
+\subsubsection*{3.2 S参照では \(L_{\mathrm{cav}}\) を ``式から消し込める''}
+
+S参照の最大の利点は、分母（多重反射母関数）を
+\(\boxed{L_{BT}}\) の指数因子から独立に書けることである。
+
+たとえば、振幅レベルの母関数（複素分母）を
+\begin{equation}
+\boxed{
+D(\lambda,u)=1-r_u^{(S)}(\lambda,u)\,r_d^{(S)}(\lambda,u)
+}
+\label{eq:D_source}
+\end{equation}
+と置ける（DGではこの \(D\) が複素のまま現れる）。
+この \eqref{eq:D_source} には
+\(\boxed{L_{\mathrm{cav}}}\) は明示的に現れない。
+なぜなら、B面/T面参照で必要だった ``B--T の位相積算'' は、
+S参照の反射係数 \(r_u^{(S)}, r_d^{(S)}\) の定義（参照面変換）にすでに吸収されているからである。
+
+\paragraph{ただし ``距離'' は消えない：source位置依存として現れる。}
+S参照にしても、source 位置（S面）から境界までの距離は
+分子側（干渉項）として必ず残る。
+proxy 的に書けば代表例として
+
+\begin{equation}
+\boxed{
+\text{(source位置依存の干渉因子)}
+\ \sim\
+\left|1+r_u^{(S)}(\lambda,u)\exp\!\left(i\frac{4\pi}{\lambda}L_{SB}(u)\right)\right|^2
+}
+\end{equation}
+
+あるいは top 側として
+
+\begin{equation}
+\boxed{
+\ \sim\
+\left|1+r_d^{(S)}(\lambda,u)\exp\!\left(i\frac{4\pi}{\lambda}L_{ST}(u)\right)\right|^2
+}
+\end{equation}
+
+のように \(\boxed{L_{SB}}\) と \(\boxed{L_{ST}}\) が必ず現れる。
+
+従って
+\[
+\boxed{\text{S参照の proxy \(F\) では \(L_S\) を1本にせず \(L_{SB},L_{ST}\) が現れる}}
+\]
+が正しい理解である。
+
+\subsection*{4. \(L_S\) を ``1つの式'' で書くならどうなるか（明示）}
+
+ユーザが \(L_S=\) の形で1つを要求する場合、
+S参照では本質的に2本必要であるため、最も情報落ちのない明示は
+\begin{equation}
+\boxed{
+L_S(u)\equiv\big(L_{SB}(u),\,L_{ST}(u)\big)
+}
+\end{equation}
+（2成分）である。
+
+どうしてもスカラーに潰す場合は、用途別に
+\begin{equation}
+\boxed{
+L_S^{(B)}(u)\equiv L_{SB}(u),
+\qquad
+L_S^{(T)}(u)\equiv L_{ST}(u)
+}
+\end{equation}
+と定義して使い分ける必要がある（結局2本必要）。
+
+\subsection*{5. 最終まとめ（質問への直接回答）}
+
+\begin{enumerate}
+\item \(\boxed{L_{\mathrm{cav}}}\) は B--T参照の proxy \(F\) の分母に \emph{明示的に} 現れる。
+\item S参照では \(\boxed{L_{\mathrm{cav}}}\) を反射係数定義に吸収し、
+分母を \(D=1-r_u^{(S)}r_d^{(S)}\) と書けるため、
+\(\boxed{L_{\mathrm{cav}}}\) は \emph{式に直接は現れない}（ただし情報は \(r_u^{(S)}, r_d^{(S)}\) に埋め込まれている）。
+\item S参照の proxy \(F\) に現れる ``距離'' は
+\(\boxed{L_{SB}}\) と \(\boxed{L_{ST}}\) の2本であり、
+単一の \(\boxed{L_S}\)（スカラー）として現れるのではない。
+\end{enumerate}
+
+
+

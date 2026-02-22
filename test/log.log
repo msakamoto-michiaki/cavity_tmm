@@ -1,0 +1,445 @@
+=== ver17 test suite (verbose diagnostics) ===
+TEST_VERBOSE=1  (set to 0 to reduce prints)
+
+--- test_fresnel_rewrap_vs_pymoosh ---
+[TEST] Fresnel (rewrap convention) interface r vs PyMoosh
+  compares: rw._interface_r  <->  PyMoosh.coefficient_S on a single interface
+  grid    : lam_nm=[450.0, 550.0, 650.0], u=[0.0, 0.5, 0.9], pol in {TE(0),TM(1)}
+  criterion: atol=1e-10 OR rtol=1e-10
+
+[CHECK] rewrap interface r vs PyMoosh (pol=0)
+  context: n1=(1+0j), n2=(1.5+0j), u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=8.327e-17, max_rel=8.327e-17 => PASS
+  x   sample: [-0.2+0j, -0.2+0j, -0.2+0j]
+  ref sample: [-0.2+0j, -0.2+0j, -0.2+0j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=1)
+  context: n1=(1+0j), n2=(1.5+0j), u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=5.551e-17, max_rel=5.551e-17 => PASS
+  x   sample: [+0.2+0j, +0.2+0j, +0.2+0j]
+  ref sample: [+0.2+0j, +0.2+0j, +0.2+0j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=0)
+  context: n1=(1+0j), n2=(1.5+0j), u=0.5, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=1.110e-16, max_rel=1.110e-16 => PASS
+  x   sample: [-0.240408+0j, -0.240408+0j, -0.240408+0j]
+  ref sample: [-0.240408+0j, -0.240408+0j, -0.240408+0j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=1)
+  context: n1=(1+0j), n2=(1.5+0j), u=0.5, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=1.110e-16, max_rel=1.110e-16 => PASS
+  x   sample: [+0.1589+0j, +0.1589+0j, +0.1589+0j]
+  ref sample: [+0.1589+0j, +0.1589+0j, +0.1589+0j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=0)
+  context: n1=(1+0j), n2=(1.5+0j), u=0.9, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=1.110e-16, max_rel=1.110e-16 => PASS
+  x   sample: [-0.467091+0j, -0.467091+0j, -0.467091+0j]
+  ref sample: [-0.467091+0j, -0.467091+0j, -0.467091+0j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=1)
+  context: n1=(1+0j), n2=(1.5+0j), u=0.9, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=1.110e-16, max_rel=1.110e-16 => PASS
+  x   sample: [-0.100538+0j, -0.100538+0j, -0.100538+0j]
+  ref sample: [-0.100538+0j, -0.100538+0j, -0.100538+0j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=0)
+  context: n1=(1.8+0.02j), n2=(1.5+0j), u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=8.327e-17, max_rel=8.327e-17 => PASS
+  x   sample: [+0.0909425+0.00550944j, +0.0909425+0.00550944j, +0.0909425+0.00550944j]
+  ref sample: [+0.0909425+0.00550944j, +0.0909425+0.00550944j, +0.0909425+0.00550944j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=1)
+  context: n1=(1.8+0.02j), n2=(1.5+0j), u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=8.327e-17, max_rel=8.327e-17 => PASS
+  x   sample: [-0.0909425-0.00550944j, -0.0909425-0.00550944j, -0.0909425-0.00550944j]
+  ref sample: [-0.0909425-0.00550944j, -0.0909425-0.00550944j, -0.0909425-0.00550944j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=0)
+  context: n1=(1.8+0.02j), n2=(1.5+0j), u=0.5, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=1.943e-16, max_rel=1.943e-16 => PASS
+  x   sample: [+0.100236+0.0059593j, +0.100236+0.0059593j, +0.100236+0.0059593j]
+  ref sample: [+0.100236+0.0059593j, +0.100236+0.0059593j, +0.100236+0.0059593j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=1)
+  context: n1=(1.8+0.02j), n2=(1.5+0j), u=0.5, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=1.804e-16, max_rel=1.804e-16 => PASS
+  x   sample: [-0.0816328-0.00505706j, -0.0816328-0.00505706j, -0.0816328-0.00505706j]
+  ref sample: [-0.0816328-0.00505706j, -0.0816328-0.00505706j, -0.0816328-0.00505706j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=0)
+  context: n1=(1.8+0.02j), n2=(1.5+0j), u=0.9, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=5.575e-17, max_rel=5.575e-17 => PASS
+  x   sample: [+0.130145+0.00728115j, +0.130145+0.00728115j, +0.130145+0.00728115j]
+  ref sample: [+0.130145+0.00728115j, +0.130145+0.00728115j, +0.130145+0.00728115j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=1)
+  context: n1=(1.8+0.02j), n2=(1.5+0j), u=0.9, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=8.328e-17, max_rel=8.328e-17 => PASS
+  x   sample: [-0.0514579-0.0036944j, -0.0514579-0.0036944j, -0.0514579-0.0036944j]
+  ref sample: [-0.0514579-0.0036944j, -0.0514579-0.0036944j, -0.0514579-0.0036944j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=0)
+  context: n1=(1.7+0j), n2=(0.2+3j), u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=1.570e-16, max_rel=1.570e-16 => PASS
+  x   sample: [-0.487708-0.808882j, -0.487708-0.808882j, -0.487708-0.808882j]
+  ref sample: [-0.487708-0.808882j, -0.487708-0.808882j, -0.487708-0.808882j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=1)
+  context: n1=(1.7+0j), n2=(0.2+3j), u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=2.220e-16, max_rel=2.220e-16 => PASS
+  x   sample: [+0.487708+0.808882j, +0.487708+0.808882j, +0.487708+0.808882j]
+  ref sample: [+0.487708+0.808882j, +0.487708+0.808882j, +0.487708+0.808882j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=0)
+  context: n1=(1.7+0j), n2=(0.2+3j), u=0.5, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=0.000e+00, max_rel=0.000e+00 => PASS
+  x   sample: [-0.52891-0.786281j, -0.52891-0.786281j, -0.52891-0.786281j]
+  ref sample: [-0.52891-0.786281j, -0.52891-0.786281j, -0.52891-0.786281j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=1)
+  context: n1=(1.7+0j), n2=(0.2+3j), u=0.5, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=2.776e-16, max_rel=2.776e-16 => PASS
+  x   sample: [+0.444297+0.83003j, +0.444297+0.83003j, +0.444297+0.83003j]
+  ref sample: [+0.444297+0.83003j, +0.444297+0.83003j, +0.444297+0.83003j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=0)
+  context: n1=(1.7+0j), n2=(0.2+3j), u=0.9, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=1.110e-16, max_rel=1.110e-16 => PASS
+  x   sample: [-0.622265-0.724012j, -0.622265-0.724012j, -0.622265-0.724012j]
+  ref sample: [-0.622265-0.724012j, -0.622265-0.724012j, -0.622265-0.724012j]
+
+[CHECK] rewrap interface r vs PyMoosh (pol=1)
+  context: n1=(1.7+0j), n2=(0.2+3j), u=0.9, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=3.140e-16, max_rel=3.140e-16 => PASS
+  x   sample: [+0.32602+0.875958j, +0.32602+0.875958j, +0.32602+0.875958j]
+  ref sample: [+0.32602+0.875958j, +0.32602+0.875958j, +0.32602+0.875958j]
+
+OK
+
+--- test_gpvm_fresnel_sign_convention ---
+[TEST] GPVM Fresnel sign convention
+  TE: gpvm.fresnel_rt should match rewrap interface r
+  TM: gpvm.fresnel_rt should equal - rewrap interface r (convention difference)
+  note: set n_e=1 so u is identical in both conventions
+  criterion: atol=1e-10 OR rtol=1e-10
+
+[CHECK] GPVM TE Fresnel == rewrap
+  context: nj=(1+0j), nk=(1.5+0j), u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=8.327e-17, max_rel=8.327e-17 => PASS
+  x   sample: [-0.2+0j, -0.2+0j, -0.2+0j]
+  ref sample: [-0.2+0j, -0.2+0j, -0.2+0j]
+
+[CHECK] GPVM TM Fresnel == -rewrap
+  context: nj=(1+0j), nk=(1.5+0j), u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=8.327e-17, max_rel=8.327e-17 => PASS
+  x   sample: [-0.2+0j, -0.2+0j, -0.2+0j]
+  ref sample: [-0.2-0j, -0.2-0j, -0.2-0j]
+
+[CHECK] GPVM TE Fresnel == rewrap
+  context: nj=(1+0j), nk=(1.5+0j), u=0.4, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=8.327e-17, max_rel=8.327e-17 => PASS
+  x   sample: [-0.224015+0j, -0.224015+0j, -0.224015+0j]
+  ref sample: [-0.224015+0j, -0.224015+0j, -0.224015+0j]
+
+[CHECK] GPVM TM Fresnel == -rewrap
+  context: nj=(1+0j), nk=(1.5+0j), u=0.4, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=8.327e-17, max_rel=8.327e-17 => PASS
+  x   sample: [-0.175742+0j, -0.175742+0j, -0.175742+0j]
+  ref sample: [-0.175742-0j, -0.175742-0j, -0.175742-0j]
+
+[CHECK] GPVM TE Fresnel == rewrap
+  context: nj=(1+0j), nk=(1.5+0j), u=0.8, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=1.110e-16, max_rel=1.110e-16 => PASS
+  x   sample: [-0.357897+0j, -0.357897+0j, -0.357897+0j]
+  ref sample: [-0.357897+0j, -0.357897+0j, -0.357897+0j]
+
+[CHECK] GPVM TM Fresnel == -rewrap
+  context: nj=(1+0j), nk=(1.5+0j), u=0.8, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=1.180e-16, max_rel=1.180e-16 => PASS
+  x   sample: [-0.0309838+0j, -0.0309838+0j, -0.0309838+0j]
+  ref sample: [-0.0309838-0j, -0.0309838-0j, -0.0309838-0j]
+
+[CHECK] GPVM TE Fresnel == rewrap
+  context: nj=(1.8+0.01j), nk=(1.6+0j), u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=9.715e-17, max_rel=9.715e-17 => PASS
+  x   sample: [+0.0588317+0.00276814j, +0.0588317+0.00276814j, +0.0588317+0.00276814j]
+  ref sample: [+0.0588317+0.00276814j, +0.0588317+0.00276814j, +0.0588317+0.00276814j]
+
+[CHECK] GPVM TM Fresnel == -rewrap
+  context: nj=(1.8+0.01j), nk=(1.6+0j), u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=9.021e-17, max_rel=9.021e-17 => PASS
+  x   sample: [+0.0588317+0.00276814j, +0.0588317+0.00276814j, +0.0588317+0.00276814j]
+  ref sample: [+0.0588317+0.00276814j, +0.0588317+0.00276814j, +0.0588317+0.00276814j]
+
+[CHECK] GPVM TE Fresnel == rewrap
+  context: nj=(1.8+0.01j), nk=(1.6+0j), u=0.4, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=4.164e-17, max_rel=4.164e-17 => PASS
+  x   sample: [+0.0622939+0.00291071j, +0.0622939+0.00291071j, +0.0622939+0.00291071j]
+  ref sample: [+0.0622939+0.00291071j, +0.0622939+0.00291071j, +0.0622939+0.00291071j]
+
+[CHECK] GPVM TM Fresnel == -rewrap
+  context: nj=(1.8+0.01j), nk=(1.6+0j), u=0.4, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=3.471e-17, max_rel=3.471e-17 => PASS
+  x   sample: [+0.055368+0.00262539j, +0.055368+0.00262539j, +0.055368+0.00262539j]
+  ref sample: [+0.055368+0.00262539j, +0.055368+0.00262539j, +0.055368+0.00262539j]
+
+[CHECK] GPVM TE Fresnel == rewrap
+  context: nj=(1.8+0.01j), nk=(1.6+0j), u=0.8, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=5.553e-17, max_rel=5.553e-17 => PASS
+  x   sample: [+0.0756669+0.00344165j, +0.0756669+0.00344165j, +0.0756669+0.00344165j]
+  ref sample: [+0.0756669+0.00344165j, +0.0756669+0.00344165j, +0.0756669+0.00344165j]
+
+[CHECK] GPVM TM Fresnel == -rewrap
+  context: nj=(1.8+0.01j), nk=(1.6+0j), u=0.8, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=1.318e-16, max_rel=1.318e-16 => PASS
+  x   sample: [+0.0419631+0.00209036j, +0.0419631+0.00209036j, +0.0419631+0.00209036j]
+  ref sample: [+0.0419631+0.00209036j, +0.0419631+0.00209036j, +0.0419631+0.00209036j]
+
+OK
+
+--- test_terminal_reflections_BT_vs_pymoosh ---
+[TEST] BT terminal reflections vs PyMoosh (ref)
+  compares: rw.terminal_reflections_BT (internal S-matrix)  <->  rw.terminal_reflections_BT_from_pymoosh
+  outputs : rb_raw (complex), rt (complex), rb_used policy(phiB=pi) = -abs(rb_raw)
+  grid    : lam_nm=[450.0, 550.0, 650.0], u in {0.0,0.7}, pol in {TE(0),TM(1)}
+  criterion: rb_raw/rt atol=1e-10 OR rtol=1e-10;  rb_used policy atol=1e-12
+
+[CHECK] BT rb_raw vs PyMoosh (pol=0)
+  context: u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=5.237e-16, max_rel=5.237e-16 => PASS
+  x   sample: [+0.494394-0.800473j, +0.29334-0.900319j, +0.147388-0.939234j]
+  ref sample: [+0.494394-0.800473j, +0.29334-0.900319j, +0.147388-0.939234j]
+
+[CHECK] BT rt vs PyMoosh (pol=0)
+  context: u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=2.989e-16, max_rel=2.989e-16 => PASS
+  x   sample: [+0.164864-0.407849j, -0.0840108-0.44683j, -0.252355-0.332785j]
+  ref sample: [+0.164864-0.407849j, -0.0840108-0.44683j, -0.252355-0.332785j]
+
+[INFO] rb_used policy check (u=0.0, pol=0):
+  rb_raw  sample: [+0.494394-0.800473j, +0.29334-0.900319j, +0.147388-0.939234j]
+  rb_used sample: [-0.940842-0j, -0.946902-0j, -0.950728-0j]
+  -abs(rb_raw)  : [-0.940842-0j, -0.946902-0j, -0.950728-0j]
+
+[CHECK] BT rb_used == -abs(rb_raw) (pol=0)
+  context: u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-12 OR max_rel<= 1.000e-12
+  result   : max|Δ|=0.000e+00, max_rel=0.000e+00 => PASS
+  x   sample: [-0.940842-0j, -0.946902-0j, -0.950728-0j]
+  ref sample: [-0.940842-0j, -0.946902-0j, -0.950728-0j]
+
+[CHECK] BT rb_raw vs PyMoosh (pol=1)
+  context: u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=3.377e-16, max_rel=3.377e-16 => PASS
+  x   sample: [-0.494394+0.800473j, -0.29334+0.900319j, -0.147388+0.939234j]
+  ref sample: [-0.494394+0.800473j, -0.29334+0.900319j, -0.147388+0.939234j]
+
+[CHECK] BT rt vs PyMoosh (pol=1)
+  context: u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=2.220e-16, max_rel=2.220e-16 => PASS
+  x   sample: [-0.164864+0.407849j, +0.0840108+0.44683j, +0.252355+0.332785j]
+  ref sample: [-0.164864+0.407849j, +0.0840108+0.44683j, +0.252355+0.332785j]
+
+[INFO] rb_used policy check (u=0.0, pol=1):
+  rb_raw  sample: [-0.494394+0.800473j, -0.29334+0.900319j, -0.147388+0.939234j]
+  rb_used sample: [-0.940842-0j, -0.946902-0j, -0.950728-0j]
+  -abs(rb_raw)  : [-0.940842-0j, -0.946902-0j, -0.950728-0j]
+
+[CHECK] BT rb_used == -abs(rb_raw) (pol=1)
+  context: u=0.0, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-12 OR max_rel<= 1.000e-12
+  result   : max|Δ|=0.000e+00, max_rel=0.000e+00 => PASS
+  x   sample: [-0.940842-0j, -0.946902-0j, -0.950728-0j]
+  ref sample: [-0.940842-0j, -0.946902-0j, -0.950728-0j]
+
+[CHECK] BT rb_raw vs PyMoosh (pol=0)
+  context: u=0.7, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=2.989e-16, max_rel=2.989e-16 => PASS
+  x   sample: [+0.329227-0.886415j, +0.129055-0.942916j, -0.00954742-0.955425j]
+  ref sample: [+0.329227-0.886415j, +0.129055-0.942916j, -0.00954742-0.955425j]
+
+[CHECK] BT rt vs PyMoosh (pol=0)
+  context: u=0.7, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=4.450e-16, max_rel=4.450e-16 => PASS
+  x   sample: [+0.0771266-0.56395j, -0.229285-0.506624j, -0.398654-0.316778j]
+  ref sample: [+0.0771266-0.56395j, -0.229285-0.506624j, -0.398654-0.316778j]
+
+[INFO] rb_used policy check (u=0.7, pol=0):
+  rb_raw  sample: [+0.329227-0.886415j, +0.129055-0.942916j, -0.00954742-0.955425j]
+  rb_used sample: [-0.94558-0j, -0.951706-0j, -0.955473-0j]
+  -abs(rb_raw)  : [-0.94558-0j, -0.951706-0j, -0.955473-0j]
+
+[CHECK] BT rb_used == -abs(rb_raw) (pol=0)
+  context: u=0.7, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-12 OR max_rel<= 1.000e-12
+  result   : max|Δ|=0.000e+00, max_rel=0.000e+00 => PASS
+  x   sample: [-0.94558-0j, -0.951706-0j, -0.955473-0j]
+  ref sample: [-0.94558-0j, -0.951706-0j, -0.955473-0j]
+
+[CHECK] BT rb_raw vs PyMoosh (pol=1)
+  context: u=0.7, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=7.850e-16, max_rel=7.850e-16 => PASS
+  x   sample: [-0.52012+0.779993j, -0.338812+0.880023j, -0.205443+0.923974j]
+  ref sample: [-0.52012+0.779993j, -0.338812+0.880023j, -0.205443+0.923974j]
+
+[CHECK] BT rt vs PyMoosh (pol=1)
+  context: u=0.7, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-10 OR max_rel<= 1.000e-10
+  result   : max|Δ|=5.558e-16, max_rel=5.558e-16 => PASS
+  x   sample: [-0.0358557+0.332694j, +0.118049+0.293122j, +0.194566+0.189354j]
+  ref sample: [-0.0358557+0.332694j, +0.118049+0.293122j, +0.194566+0.189354j]
+
+[INFO] rb_used policy check (u=0.7, pol=1):
+  rb_raw  sample: [-0.52012+0.779993j, -0.338812+0.880023j, -0.205443+0.923974j]
+  rb_used sample: [-0.937504-0j, -0.942992-0j, -0.946539-0j]
+  -abs(rb_raw)  : [-0.937504-0j, -0.942992-0j, -0.946539-0j]
+
+[CHECK] BT rb_used == -abs(rb_raw) (pol=1)
+  context: u=0.7, lam_nm=[450.0, 550.0, 650.0]
+  criterion: PASS if max|Δ|<= 1.000e-12 OR max_rel<= 1.000e-12
+  result   : max|Δ|=0.000e+00, max_rel=0.000e+00 => PASS
+  x   sample: [-0.937504-0j, -0.942992-0j, -0.946539-0j]
+  ref sample: [-0.937504-0j, -0.942992-0j, -0.946539-0j]
+
+OK
+
+--- test_gpvm_transfer_matrix_vs_pymoosh ---
+[TEST] gpvm transfer-matrix stack r vs PyMoosh (ref)
+  stack: incident -> (n1,d1) -> (n2,d2) -> substrate
+  n_inc=(1+0j), n1=(1.7+0.02j), d1_nm=120.0, n2=(1.3+0j), d2_nm=80.0, n_sub=(1.5+0j)
+  lam_nm=550.0, u=0.6, n_e=(1+0j)
+  note: TM has sign convention difference (GPVM TM = - PyMoosh/rewrap TM)
+  criterion: atol=5e-9 OR rtol=5e-9
+
+[CHECK] gpvm TMM r vs PyMoosh (TE)
+  context: expect_sign=+1 applied to PyMoosh r
+  criterion: PASS if max|Δ|<= 5.000e-09 OR max_rel<= 5.000e-09
+  result   : max|Δ|=1.388e-16, max_rel=1.388e-16 => PASS
+  x   sample: [-0.44449-0.135674j]
+  ref sample: [-0.44449-0.135674j]
+
+[CHECK] gpvm TMM r vs PyMoosh (TM)
+  context: expect_sign=-1 applied to PyMoosh r
+  criterion: PASS if max|Δ|<= 5.000e-09 OR max_rel<= 5.000e-09
+  result   : max|Δ|=4.163e-17, max_rel=4.163e-17 => PASS
+  x   sample: [-0.263875-0.104226j]
+  ref sample: [-0.263875-0.104226j]
+
+OK
+
+--- test_phase3_proxy_E2_consistency ---
+[TEST] phase3 proxy E2 consistency (objective quantity)
+  objective uses Eq66 proxy (E2_raw) and should be gauge-consistent with BT form
+  lambda_target=530.0 nm, pol=0 (TE), u=0.0
+  terminal reflections (at target): rb_used=(-0.9459137093630439-0j), rt=(-0.03813876811586429-0.4566874577326524j), rb_raw=(0.3285818966611762-0.8870099676708809j)
+  criteria:
+    (a) max|E2_S_raw - E2_BT_raw| <= 1e-8
+    (b) peak z within EML (allow tiny margin)
+    (c) peak_err = |z_peak - eml_center| <= 5 nm (loose smoke)
+
+  max|Δ(E2_raw)| = 0.000e+00
+  E2_S_raw sample: [0.00175741, 0.00175965, 0.0017664, 0.00177765, 0.00179342, ..., 34.6654, 34.4602, 34.2557, 34.0521, 33.8491]
+  E2_BT_raw sample:[0.00175741, 0.00175965, 0.0017664, 0.00177765, 0.00179342, ..., 34.6654, 34.4602, 34.2557, 34.0521, 33.8491]
+  z_peak=77.643 nm
+  EML: start=72.638 nm, center=80.138 nm, end=87.638 nm
+  peak_err=2.495 nm
+
+OK
+
+--- test_bottom_metal_k_dependence ---
+[TEST] bottom-metal k dependence (boundary |E|^2 suppression)
+  evaluates ratio(k)=|E(z=0)|/max|E(EML)| using run_bottom_metal_PEC_proxy.compute_E0_over_emlmax
+  lambda=620.0 nm, u=0, TE-h
+  k_list=[50.0, 200.0, 800.0, 2000.0]
+  criteria:
+    (a) all ratios finite
+    (b) ratio(k_max) < ratio(k_min)
+    (c) loose decreasing trend: ratio(800) <= 1.2*ratio(200)
+
+  k=   50.0  ratio=0.314964  rA=-0.962317-0.259698j  rB=0.846612-0.423314j
+  k=  200.0  ratio=0.103176  rA=-0.977102-0.198694j  rB=0.846612-0.423314j
+  k=  800.0  ratio=0.0279632  rA=-0.980149-0.183329j  rB=0.846612-0.423314j
+  k= 2000.0  ratio=0.0113766  rA=-0.980728-0.180252j  rB=0.846612-0.423314j
+  ratios: [0.314964, 0.103176, 0.0279632, 0.0113766]
+
+OK
+
+--- test_scripts_smoke ---
+[TEST] scripts smoke (subset of run_rgb_full_eval.sh)
+  temp outdir: /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157
+  steps: WRITER -> U0_MAIN -> U0_AVSB -> BOTTOM_METAL -> HEATMAP(u0-only)
+
+[SMOKE] WRITER command:
+   python /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/run_phase3_opt_then_gpvm_eml_profile.py --lambda-nm 530 --best-json /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/out_gpvm_step2/G/best_geometry.json
+  WRITER exit=0
+
+  WRITER expected outputs:
+   - OK  /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/out_gpvm_step2/G/best_geometry.json
+   - OK  /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/out_gpvm_step2/G/E2_proxy_lcav_phase3BT_raw.npy
+   - OK  /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/out_gpvm_step2/G/gpvm_lcav_proxy_phase3BT.png
+
+[SMOKE] U0_MAIN command:
+   python /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/gpvm_k_lambda_u0/run_gpvm_K_lambda_u0.py --best-json /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/out_gpvm_step2/G/best_geometry.json --outdir /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/u0 --tag _G --lam-span-nm 60 --n-lam 31
+  U0_MAIN exit=0
+  expected png: /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/u0/gpvm_K_lambda_u0_components_strict_G.png
+
+[SMOKE] U0_AVSB command:
+   python /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/gpvm_k_lambda_u0/run_gpvm_K_lambda_u0_A_vs_B.py --best-json /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/out_gpvm_step2/G/best_geometry.json --outdir /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/u0 --tag _G --lam-span-nm 60 --n-lam 31
+  U0_AVSB exit=0
+  expected png: /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/u0/gpvm_K_lambda_u0_A_vs_B_G.png
+
+[SMOKE] BOTTOM_METAL command:
+   python /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/run_bottom_metal_PEC_proxy.py --best-json /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/out_gpvm_step2/G/best_geometry.json --outdir /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/bm --tag _G
+  BOTTOM_METAL exit=0
+  expected: /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/bm/need_k_for_E0_small_G.png
+  expected: /home/ubuntu/docker/myopt/workspace/cavity_tmm/phase4/ver17/test/_out/smoke_1771738000157/bm/gpvm_lcav_profile_bottomMetal_k2000_G.png
+
+[SMOKE] HEATMAP u0-only (no 2D map):
+  lam_nm grid: [500.0, 506.0, 512.0, 518.0, 524.0, 530.0, 536.0, 542.0, 548.0, 554.0, 560.0]
+  K_iso_u0: shape=(11,), min=1.51512, max=12.1086
+  K_TE_only_u0: shape=(11,), min=0.757559, max=6.05428
+  K_TM_h_only_u0: shape=(11,), min=0.757559, max=6.05428
+  K_TM_v_only_u0: shape=(11,), min=0, max=0
+
+OK
+
+=== summary ===
+ALL OK

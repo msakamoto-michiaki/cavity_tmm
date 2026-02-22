@@ -1,0 +1,425 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[margin=25mm]{geometry}
+\usepackage{amsmath,amssymb,bm,mathtools}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{physics}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+
+\title{多層膜電磁場解析論文の数式ベース解析}
+\author{}
+\date{\today}
+
+\newcommand{\ii}{\mathrm{i}}
+\newcommand{\ee}{\mathrm{e}}
+\newcommand{\dd}{\mathrm{d}}
+
+\begin{document}
+\maketitle
+
+\section*{はじめに}
+本稿は、ユーザー指定の「今の説明」を、数式を省略せずに \LaTeX{} で再記述したものである。
+対象は、1D 層状媒質における TE/TM 偏光の伝搬・反射・透過・吸収・固有モード計算であり、
+Transfer matrix（T法）、Scattering matrix（S法）、Abel\`es法、Dirichlet-to-Neumann（DtN）法、
+Admittance 法の関係を統一的に整理する。
+
+\section{物理モデル：1D 層状媒質の境界値問題}
+
+\subsection{支配方程式（TE）}
+時間依存 $\ee^{-\ii\omega t}$ を仮定し、層内で $x$ 方向に $\ee^{\ii k_x x}$ の依存性をもつとき、TE（$E_y$）は
+\begin{equation}
+\frac{\partial^2 E_y}{\partial z^2}
++\left(\mu_r\epsilon_r\frac{\omega^2}{c^2}-k_x^2\right)E_y=0
+\end{equation}
+を満たす。真空波数 $k_0=\omega/c$ と
+\begin{equation}
+\gamma_i=\sqrt{\mu_i\epsilon_i k_0^2-k_x^2}
+\end{equation}
+を定義すると、層 $i$（厚さ $h_i$）での一般解は
+\begin{equation}
+E_{y,i}(z)=A_i\,\ee^{+\ii\gamma_i z}+B_i\,\ee^{-\ii\gamma_i z}
+\end{equation}
+である。
+
+\subsection{境界条件（TE/TM）}
+界面での接線成分連続条件より、TE では
+\begin{align}
+E_y \ \text{連続}, \qquad \frac{1}{\mu}\frac{\partial E_y}{\partial z}\ \text{連続}
+\end{align}
+すなわち、界面 $z=z_i$ で
+\begin{align}
+A_i^-+B_i^- &= A_{i+1}^+ + B_{i+1}^+ \\
+\frac{\gamma_i}{\mu_i}(A_i^- - B_i^-) &=
+\frac{\gamma_{i+1}}{\mu_{i+1}}(A_{i+1}^+ - B_{i+1}^+).
+\end{align}
+TM は $\mu\leftrightarrow\epsilon$ の置換で得られる。すなわち
+\begin{align}
+H_y \ \text{連続}, \qquad \frac{1}{\epsilon}\frac{\partial H_y}{\partial z}\ \text{連続}.
+\end{align}
+
+\section{各数値手法の統一構造}
+
+\subsection{T法（Transfer matrix）}
+状態ベクトルを
+\begin{equation}
+\bm{v}_i=
+\begin{pmatrix}
+A_i \\ B_i
+\end{pmatrix}
+\end{equation}
+とし、伝搬行列
+\begin{equation}
+P_i=
+\begin{pmatrix}
+\ee^{-\ii\gamma_i h_i} & 0 \\
+0 & \ee^{+\ii\gamma_i h_i}
+\end{pmatrix}
+\end{equation}
+を定義する。界面行列 $I_{i,i+1}$ を用いて
+\begin{equation}
+\bm{v}_{i+1}=I_{i,i+1}P_i\bm{v}_i
+\end{equation}
+を反復し、全体行列 $T$ を
+\begin{equation}
+\bm{v}_{N+1}=T\bm{v}_0,\qquad
+T=\prod_{i=0}^{N} I_{i,i+1}P_i
+\end{equation}
+で定める（積の順序は実装の定義による）。
+入射を $A_0^+=1,\ B_{N+1}^-=0$ とした規約では
+\begin{equation}
+r=-\frac{T_{01}}{T_{00}},\qquad
+t=rT_{10}+T_{11}
+\end{equation}
+である（別規約では添字が $T_{21},T_{22}$ になる）。
+
+\subsection{S法（Scattering matrix）}
+入出力を明示して
+\begin{equation}
+\begin{pmatrix}
+B_0^-\\
+A_{N+1}^+
+\end{pmatrix}
+=
+S
+\begin{pmatrix}
+A_0^+\\
+B_{N+1}^-
+\end{pmatrix},
+\qquad
+S=
+\begin{pmatrix}
+S_{11}&S_{12}\\
+S_{21}&S_{22}
+\end{pmatrix}.
+\end{equation}
+左入射（$A_0^+=1,\ B_{N+1}^-=0$）では
+\begin{equation}
+r=S_{11},\qquad t=S_{21}.
+\end{equation}
+0始まり添字規約では
+\begin{equation}
+r=S_{00},\qquad t=S_{10}.
+\end{equation}
+
+\subsection{Abel\`es 法}
+TE の状態量を
+\begin{equation}
+\bm{u}_i=
+\begin{pmatrix}
+E_{y,i}\\
+\frac{1}{\mu_i}\partial_z E_{y,i}
+\end{pmatrix}
+\end{equation}
+とし、
+\begin{equation}
+\bm{u}_{i+1}=M_i\bm{u}_i
+\end{equation}
+で
+\begin{equation}
+M_i=
+\begin{pmatrix}
+\cos(\gamma_i h_i) & -\dfrac{\sin(\gamma_i h_i)}{\psi_i}\\[4pt]
+\psi_i\sin(\gamma_i h_i) & \cos(\gamma_i h_i)
+\end{pmatrix},
+\qquad
+\psi_i=\frac{\gamma_i}{\mu_i}.
+\end{equation}
+TM では $\psi_i=\gamma_i/\epsilon_i$。
+
+\subsection{DtN 法（単層の明示式）}
+境界値 $\left(E_L,E_R\right)$ と法線微分量 $\left(\phi_L,\phi_R\right)$
+\begin{equation}
+\phi=\frac{1}{\mu}\partial_z E_y \quad (\text{TE})
+\end{equation}
+を用いると、単層の DtN は
+\begin{equation}
+\begin{pmatrix}
+\phi_L\\
+-\phi_R
+\end{pmatrix}
+=
+\begin{pmatrix}
+\psi_i\cot\delta_i & -\psi_i\csc\delta_i\\
+-\psi_i\csc\delta_i & \psi_i\cot\delta_i
+\end{pmatrix}
+\begin{pmatrix}
+E_L\\
+E_R
+\end{pmatrix},
+\qquad
+\delta_i=\gamma_i h_i,\ \psi_i=\frac{\gamma_i}{\mu_i}.
+\end{equation}
+層合成は Schur 補で実行でき、S法と同様に数値安定に実装可能である。
+
+\section{Admittance 再帰式（高速反射計算）}
+
+\subsection{TE の再帰}
+\begin{equation}
+X_i=\frac{X_{i+1}-\psi_i\tan\delta_i}{1+\frac{X_{i+1}}{\psi_i}\tan\delta_i},
+\qquad
+\delta_i=\gamma_i h_i,\qquad
+\psi_i=\frac{\gamma_i}{\mu_i},
+\end{equation}
+\begin{equation}
+Y_i=\frac{\ii}{k_0}X_i,\qquad
+n_{\mathrm{eff},i}^{\mathrm{TE}}=\frac{\gamma_i}{\mu_i k_0}.
+\end{equation}
+同値な形として
+\begin{equation}
+Y_i=
+\frac{Y_{i+1}-\ii n_{\mathrm{eff},i}^{\mathrm{TE}}\tan\delta_i}
+{1-\ii\frac{Y_{i+1}}{n_{\mathrm{eff},i}^{\mathrm{TE}}}\tan\delta_i}.
+\end{equation}
+入射側での反射係数は
+\begin{equation}
+r_{\mathrm{TE}}=
+\frac{n_{\mathrm{eff},0}^{\mathrm{TE}}-Y_0}
+{n_{\mathrm{eff},0}^{\mathrm{TE}}+Y_0}.
+\end{equation}
+
+\subsection{TM の再帰}
+TM では
+\begin{equation}
+n_{\mathrm{eff},i}^{\mathrm{TM}}=\frac{\gamma_i}{\epsilon_i k_0},
+\end{equation}
+\begin{equation}
+Y_i=
+\frac{Y_{i+1}-\ii n_{\mathrm{eff},i}^{\mathrm{TM}}\tan\delta_i}
+{1-\ii\frac{Y_{i+1}}{n_{\mathrm{eff},i}^{\mathrm{TM}}}\tan\delta_i},
+\end{equation}
+\begin{equation}
+r_{\mathrm{TM}}=
+\frac{n_{\mathrm{eff},0}^{\mathrm{TM}}-Y_0}
+{n_{\mathrm{eff},0}^{\mathrm{TM}}+Y_0}.
+\end{equation}
+
+\section{安定性と計算量の数式的理解}
+
+\subsection{T法の不安定化機構}
+$P_i$ の対角成分は $\ee^{\pm \ii\gamma_i h_i}$ であり、
+$\gamma_i=\alpha_i+\ii\beta_i$ と書くと
+\begin{equation}
+\left|\ee^{-\ii\gamma_i h_i}\right|=\ee^{+\beta_i h_i},\qquad
+\left|\ee^{+\ii\gamma_i h_i}\right|=\ee^{-\beta_i h_i}.
+\end{equation}
+したがって、層積でのダイナミックレンジは概ね
+\begin{equation}
+\kappa(T)\sim
+\exp\!\left(2\sum_{i=1}^N |\Im \gamma_i|h_i\right)
+\end{equation}
+に比例して悪化し、桁落ちやキャンセルが起きやすい。
+
+\subsection{S法/DtN法の安定性}
+S法や DtN 法では、入出力関係（あるいは境界演算子）を直接合成するため、
+増大成分と減衰成分の同時巨大化を避けやすい。
+特にエバネッセントが卓越する多層・金属構造で安定性が高い。
+
+\subsection{計算量}
+層数を $N$ とすると、いずれも基本的には
+\begin{equation}
+\mathcal{O}(N)
+\end{equation}
+であるが、1層あたり定数因子が異なる：
+\begin{equation}
+\text{Admittance} < \text{Abel\`es} \lesssim \text{T/DtN} < \text{S}
+\end{equation}
+（実装・複素演算の最適化による変動あり）。
+
+\section{複素平方根の分岐切断}
+
+\subsection{通常計算（散乱問題）}
+\begin{equation}
+\gamma_i=\sqrt{\mu_i\epsilon_i k_0^2-k_x^2}
+\end{equation}
+の分岐を
+\begin{equation}
+\Im \gamma_i \ge 0
+\end{equation}
+側に取り、エバネッセント成分が遠方で減衰する物理条件を満たすようにする。
+
+\subsection{モード探索時}
+極探索では複素 $k_x$ 面で分岐追跡が必要であり、
+例えば
+\begin{equation}
+\arg(k_z)\in\left[-\frac{\pi}{5},\,\frac{4\pi}{5}\right]
+\end{equation}
+のような規約で連続性を保って極を追跡する。
+
+\section{吸収・光電流評価式}
+
+\subsection{Poynting 流束}
+TE では
+\begin{equation}
+H_x=\frac{1}{\ii\omega\mu_0\mu}\frac{\partial E_y}{\partial z},
+\qquad
+S_z=\frac{1}{2}\Re\!\left(E_y H_x^\ast\right).
+\end{equation}
+入射流束 $S_{\mathrm{inc}}$ で正規化して
+\begin{equation}
+N_i=\frac{S_{z,i}}{S_{\mathrm{inc}}}.
+\end{equation}
+層 $i$ 吸収は
+\begin{equation}
+A_i=N_i-N_{i+1},
+\end{equation}
+全吸収は
+\begin{equation}
+A_{\mathrm{tot}}=\sum_i A_i=1-R-T.
+\end{equation}
+
+\subsection{短絡電流密度}
+活性層吸収率 $A_{\mathrm{active}}(\lambda)$ から
+\begin{equation}
+j_{sc}
+=
+\int A_{\mathrm{active}}(\lambda)\,
+\frac{\dd I}{\dd\lambda}\,
+\frac{e\lambda}{hc}\,\dd\lambda
+=
+q\int A_{\mathrm{active}}(\lambda)\,\Phi_{\mathrm{sun}}(\lambda)\,\dd\lambda,
+\end{equation}
+\begin{equation}
+\Phi_{\mathrm{sun}}(\lambda)=\frac{1}{hc/\lambda}\frac{\dd I}{\dd\lambda}
+=\frac{\lambda}{hc}\frac{\dd I}{\dd\lambda}.
+\end{equation}
+
+\section{内部場計算：Gaussian ビームと線電流源}
+
+\subsection{Gaussian ビームの平面波分解}
+入射スペクトル
+\begin{equation}
+E_0(k_x)=E_{00}
+\exp\!\left[-\frac{w^2}{4}\left(k_x-n_0k_0\sin\theta_0\right)^2\right]
+\exp\!\left(-\ii k_x x_0\right)
+\end{equation}
+を用いると、層 $j$ の場は
+\begin{equation}
+E_{y,j}(x,z)=\frac{1}{2\pi}\int_{-\infty}^{+\infty}
+\left[
+A_j^+(k_x)\ee^{+\ii\gamma_j z}
++
+B_j^-(k_x)\ee^{-\ii\gamma_j z}
+\right]
+\ee^{\ii k_x x}\,\dd k_x.
+\end{equation}
+離散化 $\Delta k_x$ を用いると空間周期窓
+\begin{equation}
+d=\frac{2\pi}{\Delta k_x}
+\end{equation}
+が現れるため、$d$ を十分大きく取る必要がある。
+
+\subsection{線電流源}
+2D 線電流源（$y$ 方向電流 $I$）に対し
+\begin{equation}
+\left(\partial_z^2+\partial_x^2+\epsilon_i\mu_i k_0^2\right)E_y
+=
+-\ii\omega\mu_0\mu_i I\,\delta(x-x_s)\delta(z-z_s).
+\end{equation}
+$k_x$ フーリエ成分 $\hat E(k_x,z)$ では
+\begin{equation}
+\left(\partial_z^2+\gamma_i^2\right)\hat E
+=
+-\ii\omega\mu_0\mu_i I\,\ee^{-\ii k_x x_s}\delta(z-z_s).
+\end{equation}
+ジャンプ条件は
+\begin{equation}
+\hat E\big|_{z_s+0}=\hat E\big|_{z_s-0},
+\end{equation}
+\begin{equation}
+\partial_z\hat E\big|_{z_s+0}-\partial_z\hat E\big|_{z_s-0}
+=
+-\ii\omega\mu_0\mu_i I\,\ee^{-\ii k_x x_s}.
+\end{equation}
+上下反射係数を $r_u,r_d$ とすると、源からの上向き・下向き係数の一例は
+\begin{equation}
+A_{is}^{+}=
+\frac{-\ii\omega\mu_0\mu_i I\,\ee^{-\ii k_x x_s}}
+{2\ii\gamma_i\left(1-r_u r_d\right)}
+\left(1+r_d\right)\ee^{-\ii\gamma_i z_s},
+\end{equation}
+\begin{equation}
+B_{is}^{-}=
+\frac{-\ii\omega\mu_0\mu_i I\,\ee^{-\ii k_x x_s}}
+{2\ii\gamma_i\left(1-r_u r_d\right)}
+\left(1+r_u\right)\ee^{+\ii\gamma_i z_s},
+\end{equation}
+の形で与えられ、層構造による源放射の変調が明示化される。
+
+\section{モード解析：反射係数の極探索}
+
+\subsection{固有モード条件}
+外部からの入射が無い条件
+\begin{equation}
+B_0^-=0,\qquad A_{N+1}^+=0
+\end{equation}
+で非自明解を持つとき固有モードとなる。一般に
+\begin{equation}
+D(\omega,k_x)=0
+\end{equation}
+（行列式条件）であり、反射係数を
+\begin{equation}
+r(\omega,k_x)=\frac{N(\omega,k_x)}{D(\omega,k_x)}
+\end{equation}
+と書けば、極条件は
+\begin{equation}
+D(\omega,k_x)=0
+\quad\Longleftrightarrow\quad
+|r(\omega,k_x)|\to\infty.
+\end{equation}
+
+\subsection{数値探索}
+実装では
+\begin{equation}
+f(k_x)=\frac{1}{|r(\omega,k_x)|}
+\end{equation}
+を最小化し、例えば複素平面上で
+\begin{equation}
+k_x^{(m+1)}=k_x^{(m)}-\eta\,\nabla f\!\left(k_x^{(m)}\right)
+\end{equation}
+のような更新で極位置を追跡する。
+
+\section{実務的な手法選択基準（数式指標）}
+
+エバネッセント強度指標
+\begin{equation}
+\xi=\sum_{i=1}^{N}|\Im\gamma_i|h_i
+\end{equation}
+を導入すると、経験的に以下が有効である：
+\begin{align}
+\xi\ll 1 &:\ \text{Abel\`es / Admittance が高速有利},\\
+\xi\gtrsim 1 &:\ \text{S / DtN が安定有利}.
+\end{align}
+金属層や高損失層で $|\Im\gamma_i|$ が大きい場合、Admittance は高速だが誤差が増える可能性があるため、
+基準解として S 法を併用するのが安全である。
+
+\section*{まとめ}
+\begin{enumerate}[label=\arabic*)]
+\item すべての手法は同じ Maxwell 境界値問題を別の状態量で離散化したもの。
+\item 速度差は主に 1 層あたり定数因子、安定性差は $\ee^{\pm\ii\gamma h}$ の扱いに起因。
+\item 吸収、$j_{sc}$、内部場、モード探索まで同じ枠組みで接続できる。
+\item 実務では、基準解 S、高速探索 Admittance、中庸 DtN/Abel\`es の併用が合理的。
+\end{enumerate}
+
+\end{document}

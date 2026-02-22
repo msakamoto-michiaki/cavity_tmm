@@ -1,0 +1,181 @@
+\section{過去版でBottom(TM)が一致しなかった理由とTopが一致しなかった理由，および \texttt{reproduce\_\*\*} / \texttt{oled\_\*\*} の修正指針}
+
+本節では，以前のrewrap（端点反射を起点に再帰式で参照面へ写像）実装で
+(1) Bottom側でTM（$p$偏光）だけがPyMoosh full-stack直計算と一致しなかった原因，
+(2) Top側がTE/TMともに（あるいは特にTMで）一致しなかった原因，
+を明確化したうえで，\texttt{reproduce\_\*\*} / \texttt{oled\_\*\*} のどの箇所が不適切で，
+どのように修正すべきかをまとめる．
+
+\subsection{何を一致させるべきだったか（比較対象の再掲）}
+
+Bottom側の正しい比較は，参照面をEML/EBL（EML側）に取り，
+\[
+r_{\mathrm{rewrap,bot}}^{(\sigma)}(u,\lambda)
+\stackrel{?}{=}
+r_{\mathrm{full,bot}}^{(\sigma)}(u,\lambda),
+\qquad \sigma\in\{s,p\}
+\]
+である．ここで
+\begin{itemize}
+\item rewrap：B鏡反射 $r_B^{(\sigma)}$（入射pHTL，\,[ITO,anode]，substrate）をPyMooshで得て，
+      EBL/HTL/Rprime/pHTL を再帰式で巻き戻してEML/EBL面の反射へ写像する．
+\item full-stack：入射EML，\,[EBL,HTL,Rprime,pHTL,ITO,anode]，substrate をPyMooshで一括計算してEML/EBL面の反射を直接得る．
+\end{itemize}
+Top側も同様に，参照面をEML/ETL（EML側）に取り，
+\[
+r_{\mathrm{rewrap,top}}^{(\sigma)}(u,\lambda)
+\stackrel{?}{=}
+r_{\mathrm{full,top}}^{(\sigma)}(u,\lambda)
+\]
+を要求する（Topでは終端がairである点が本質的に難しい）．
+
+\subsection{Bottom側でTMが一致しなかった原因（以前のバグの本質）}
+
+Bottom側でTE（$s$偏光）が一致しTM（$p$偏光）だけが大きく外れた主因は，
+\textbf{TMフレネル反射係数の規約不整合（符号・分子の入れ替え）}である．
+
+層$j|k$界面を$j$側から見る反射係数は，PyMooshの内部規約と整合させるために
+アドミタンス形式で
+\[
+r_{j,k}^{(\sigma)}=\frac{b_j^{(\sigma)}-b_k^{(\sigma)}}{b_j^{(\sigma)}+b_k^{(\sigma)}}
+\]
+とするのが安全である．ここで
+\[
+b_j^{(s)}=k_{z,j},
+\qquad
+b_j^{(p)}=\frac{k_{z,j}}{\varepsilon_j},
+\qquad
+k_{z,j}=k_0\sqrt{\varepsilon_j-u^2},\quad \Im(k_{z,j})\ge 0
+\]
+である．このときTM（$p$）は等価に
+\[
+\boxed{
+r_p=\frac{\varepsilon_k k_{z,j}-\varepsilon_j k_{z,k}}
+{\varepsilon_k k_{z,j}+\varepsilon_j k_{z,k}}
+}
+\]
+となる．
+
+以前の実装では，TMの式がこの規約と逆（分子の符号が反転，あるいは$\varepsilon$の掛かり方が入れ替わり）になっており，
+\[
+r_p^{\text{(old)}} \approx -\,r_p^{\text{(PyMoosh)}}
+\]
+のような関係が発生した．FP/Airy型の多重反射では$1-r_u r_d$などの積が支配的であるため，
+この符号・位相の反転は小誤差ではなく，TMだけが$\mathcal{O}(1)$で崩れる原因となった．
+TEが一致したのは，TE式が単純で規約の取り違えが起きにくかったためである．
+
+\paragraph{Bottom(TM)の修正指針}
+\begin{itemize}
+\item \texttt{tmm\_rewrap\_utils.py}（または同等の再帰ユーティリティ）のTM界面反射を，
+      \textbf{アドミタンス形式（$b^{(p)}=k_z/\varepsilon$）}で実装し，PyMoosh規約と同一定義に統一する．
+\item $k_{z}$は常に $\Im(k_z)\ge 0$ の枝を選ぶ（$\Im=0$なら$\Re\ge 0$）．
+\end{itemize}
+
+\subsection{Top側が一致しなかった原因（Bottomと異なる難点）}
+
+Top側が一致しにくかった主因は，\textbf{終端がairで，$u>1$（$k_\parallel>k_0$）でair側がエバネッセントになり，
+複素角（$\theta$）や平方根の枝が不連続・多価になりやすい}点にある．
+
+PyMooshの計算はしばしば入射角$\theta$（あるいは$\sin\theta$）を入力として用いるが，
+\[
+\sin\theta=\frac{u}{n_{\mathrm{inc}}}
+\]
+が$|u/n_{\mathrm{inc}}|>1$（または複素$n_{\mathrm{inc}}$）になると$\theta$は複素数となり，
+$\arcsin$の枝の選び方により$\cos\theta$の符号が飛ぶことがある．
+この枝の飛びは，特にTM（$\varepsilon$が絡む）で反射位相・振幅に大きな差を生み，
+rewrap（$k_z$枝を$\Im k_z\ge 0$で固定）と，PyMoosh内部（$\theta$から$k_z$を生成）の枝が一致しないと，
+\[
+r_{\mathrm{rewrap,top}}^{(p)} \not\approx r_{\mathrm{full,top}}^{(p)}
+\]
+が顕在化する．
+
+さらに以前の実装では，以下の要因が複合してTop不一致を増幅した可能性が高い：
+\begin{itemize}
+\item \textbf{$u$の最大値をEML基準（例：$u_{\max}=0.98\,\Re(n_{\mathrm{EML}})$）にしていた}ため，
+      air終端を含むTopでは$u>1$領域を大量に含み，枝問題が顕在化しやすかった．
+\item \textbf{PyMooshへ渡す$\theta$の生成が単純な$\theta=\arcsin(u/n)$主値}であり，
+      $\cos\theta$（したがって$k_z$）の枝整合が保証されていなかった．
+\item \textbf{（環境依存で）PyMooshの角度入力が複素数を完全に想定していない}場合，
+      虚部が落ちる・内部で実数化されるなどにより，エバネッセント領域の反射がTMで破綻しやすい．
+\end{itemize}
+
+\paragraph{Topの修正指針（段階的）}
+\begin{enumerate}
+\item まず検証目的（TMMの一致確認）では，\textbf{$u\le 0.98$}（air light-line手前）に制限し，
+      伝搬領域での厳密一致（$\max|\Delta r|\sim 10^{-14}$程度）を確認する．
+\item $u>1$まで本番で扱う場合は，$\theta$経由の不連続を避けるため，
+      \textbf{$k_z$枝を$\Im(k_z)\ge 0$で固定した定義}で統一し，
+      PyMoosh入力にも整合するように$\theta$枝を次で固定する：
+      \[
+      \cos\theta \equiv \sqrt{1-\left(\frac{u}{n_{\mathrm{inc}}}\right)^2},\quad
+      \Im(\cos\theta)\ge 0
+      \]
+      を満たす枝を選び，必要なら$\theta\leftarrow\pi-\theta$で整合させる．
+\end{enumerate}
+
+\subsection{\texttt{reproduce\_\*\*} / \texttt{oled\_\*\*} のどの部分が問題で，どう直すべきか}
+
+実装上，問題は大きく \textbf{(i) 反射係数の計算部} と \textbf{(ii) $u$範囲・角度（枝）} に集約される．
+以下に，典型的な不適切箇所と修正方針をまとめる（ファイル名はプロジェクト内の命名に依存するため，関数ブロック単位で示す）．
+
+\subsubsection{(i) rewrapユーティリティ（\texttt{tmm\_rewrap\_utils.py} 相当）}
+\paragraph{不適切だった点}
+\begin{itemize}
+\item TMの界面反射$r_p$を，$\varepsilon$と$k_z$の掛け方／符号がPyMooshと一致しない式で実装していた．
+\item $k_z$の枝選択が暗黙（Pythonの主値$\sqrt{\cdot}$に依存）で，$\Im(k_z)\ge 0$が保証されていない箇所があった．
+\end{itemize}
+
+\paragraph{修正方法}
+\begin{itemize}
+\item 界面反射はアドミタンス形式で統一：
+      \[
+      r=\frac{b_1-b_2}{b_1+b_2},\quad
+      b^{(s)}=k_z,\quad b^{(p)}=\frac{k_z}{\varepsilon}
+      \]
+\item $k_z=k_0\sqrt{\varepsilon-u^2}$は枝を明示的に選び，$\Im(k_z)\ge 0$を強制する．
+\end{itemize}
+
+\subsubsection{(ii) PyMoosh呼び出し側（\texttt{reproduce\_phase2\_*} / \texttt{oled\_cavity\_*}）}
+\paragraph{不適切だった点}
+\begin{itemize}
+\item Top側に対して，$u$をEML基準で大きく取りすぎ（$u>1$を広範に含む），
+      air終端のエバネッセント領域で角度枝不整合が顕在化した．
+\item $u\to\theta$変換を$\theta=\arcsin(u/n)$主値で行い，
+      $\cos\theta$（したがって$k_z$）の枝整合を保証していなかった．
+\item （場合により）PyMoosh側が複素$\theta$を想定しない実装であると，TMが大きく崩れる．
+\end{itemize}
+
+\paragraph{修正方法}
+\begin{itemize}
+\item 検証（rewrap vs full-stack）ではTopを$u\le 0.98$に制限し，伝搬領域で厳密一致をまず確認する．
+\item 本番で$u>1$を含めるなら，$\cos\theta$枝固定（$\Im(\cos\theta)\ge 0$）を実装し，
+      PyMoosh入力$\theta$を枝整合させる．
+\item 角度経由が不安定なら，可能な範囲で「$u$直接（$k_\parallel$直接）で$k_z$を構成する」流儀に寄せ，
+      rewrap側と同じ枝条件をPyMoosh側へも反映させる（あるいは$u>1$領域をPyMoosh直計算に寄せる）．
+\end{itemize}
+
+\subsubsection{(iii) Fig.4-style可視化の注意（参考：以前の真っ黒/軸逆の原因）}
+反射一致検証とは別件だが，Fig.4-style（$\lambda$--$k_\parallel$）図で
+\[
+u=\frac{k_\parallel}{k_0}=\frac{\lambda}{2\pi}k_\parallel
+\]
+の単位変換に$10^{-9}$（nm$\to$m）が欠落すると補間が範囲外となり真っ黒化する．
+したがって，
+\[
+u_{\mathrm{req}}=\frac{\lambda[\mathrm{nm}]\cdot 10^{-9}}{2\pi}k_\parallel
+\]
+を必ず用い，imshowの\texttt{extent}も配列形状（行=$\lambda$，列=$k_\parallel$）と整合させる．
+
+\subsection{まとめ：以前の不一致の要点と本体修正の優先順位}
+
+\begin{itemize}
+\item Bottom(TM)不一致の本質は \textbf{TMフレネル係数の規約バグ}であり，
+      アドミタンス形式（$b^{(p)}=k_z/\varepsilon$）へ統一することで解決する．
+\item Top不一致の本質は \textbf{air終端に伴う$u>1$領域の枝問題（複素角・平方根）}であり，
+      まずは$u\le 0.98$で伝搬領域一致を確認し，
+      本番で$u>1$を扱う場合は$\theta$枝固定／$k_z$枝固定を明示実装する必要がある．
+\item \texttt{reproduce\_\*\*} / \texttt{oled\_\*\*} の修正は，
+      (1) 再帰ユーティリティ（TM規約と$k_z$枝）を正す，
+      (2) Topの$u$範囲と$u\to\theta$枝固定を導入する，
+      の順で行うのが最も安全である．
+\end{itemize}

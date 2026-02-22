@@ -1,0 +1,233 @@
+% Fresnel係数の等価性（preambleなし：このまま本文に貼り付けて使用）
+% 対象：
+%   - fresnel.pdf の Eq.(3.1),(3.2),(5.1),(5.2)（角度表示のFresnel係数）
+%   - GPVM論文の Eq.(3)（u表示のFresnel係数）
+% 目的：
+%   これらが（規約差を除き）等価であることを数式変形で証明する。
+
+\section*{Fresnel係数：fresnel.pdf（角度表示）とGPVM（u表示）の等価性の証明}
+
+\subsection*{0.\;前提と記号}
+界面は媒質 $i$（入射側）と媒質 $t$（透過側）からなる。屈折率は一般に複素として
+\[
+\tilde n_i,\ \tilde n_t\in\mathbb{C}
+\]
+と書く。真空波数は
+\[
+k_0=\frac{2\pi}{\lambda}
+\]
+とする。入射角は $\theta_i$、透過角は $\theta_t$ とする。面内（界面に平行）波数成分は界面を跨いで保存されるので
+\[
+k_\parallel = k_0\,\tilde n_i \sin\theta_i = k_0\,\tilde n_t \sin\theta_t
+\]
+が成り立つ。ここでGPVMの正規化パラメータ $u$ を、ある参照屈折率 $\tilde n_e$ を用いて
+\[
+k_\parallel = k_0\,\tilde n_e\,u
+\]
+と定義する（GPVMの文脈では、$\tilde n_e$ はエミッタ層（EML）の屈折率に対応させることが多い）。
+
+したがって任意媒質 $j\in\{i,t\}$ について
+\[
+\sin\theta_j=\frac{k_\parallel}{k_0\tilde n_j}=\frac{\tilde n_e}{\tilde n_j}\,u
+\]
+であり
+\[
+\cos\theta_j=\sqrt{1-\sin^2\theta_j}
+=\sqrt{1-\left(\frac{\tilde n_e}{\tilde n_j}u\right)^2}.
+\]
+このとき
+\begin{align}
+\tilde n_j\cos\theta_j
+&=\tilde n_j\sqrt{1-\left(\frac{\tilde n_e}{\tilde n_j}u\right)^2}
+=\sqrt{\tilde n_j^2-\tilde n_e^2u^2}.
+\label{eq:ncos_to_sqrt}
+\end{align}
+以後、$\sqrt{\cdot}$ の枝は、対応する縦波数の枝（減衰するエバネッセント波を選ぶ）に整合するように取る。
+
+\subsection*{1.\;fresnel.pdf のFresnel係数（角度表示）}
+fresnel.pdf によれば、入射側 $i$ から透過側 $t$ への Fresnel 振幅係数は以下で与えられる。
+
+\paragraph{(a) p偏光（TM偏光）}
+\begin{align}
+r_p
+&=\frac{\tilde n_t\cos\theta_i-\tilde n_i\cos\theta_t}
+{\tilde n_t\cos\theta_i+\tilde n_i\cos\theta_t},
+\label{eq:rp_angle}
+\\
+t_p
+&=\frac{2\tilde n_i\cos\theta_i}
+{\tilde n_t\cos\theta_i+\tilde n_i\cos\theta_t}.
+\label{eq:tp_angle}
+\end{align}
+
+\paragraph{(b) s偏光（TE偏光）}
+\begin{align}
+r_s
+&=\frac{\tilde n_i\cos\theta_i-\tilde n_t\cos\theta_t}
+{\tilde n_i\cos\theta_i+\tilde n_t\cos\theta_t},
+\label{eq:rs_angle}
+\\
+t_s
+&=\frac{2\tilde n_i\cos\theta_i}
+{\tilde n_i\cos\theta_i+\tilde n_t\cos\theta_t}.
+\label{eq:ts_angle}
+\end{align}
+
+以下では、TE $\leftrightarrow$ s、TM $\leftrightarrow$ p と対応させる。
+
+\subsection*{2.\;GPVMのFresnel係数（u表示）の形}
+GPVM論文では、界面 $j/(j+1)$ に対し、（参照屈折率 $\tilde n_e$ と $u$ を用いて）
+\[
+\sqrt{\tilde n_j^2-\tilde n_e^2u^2},\quad
+\sqrt{\tilde n_{j+1}^2-\tilde n_e^2u^2}
+\]
+を用いた形で Fresnel 係数が書かれる（これが GPVM 論文 Eq.(3) の形式である）。
+本節の目的は、fresnel.pdf の角度表示 \eqref{eq:rp_angle}--\eqref{eq:ts_angle} が
+\eqref{eq:ncos_to_sqrt} を用いることで GPVM の u表示に変形できることを示すことである。
+
+\subsection*{3.\;TE（s偏光）の等価性：fresnel.pdf $\Rightarrow$ GPVM}
+\subsubsection*{3.1\;反射係数}
+s偏光（TE）の反射係数 \eqref{eq:rs_angle} に \eqref{eq:ncos_to_sqrt} を適用する。
+すなわち
+\[
+\tilde n_i\cos\theta_i=\sqrt{\tilde n_i^2-\tilde n_e^2u^2},
+\qquad
+\tilde n_t\cos\theta_t=\sqrt{\tilde n_t^2-\tilde n_e^2u^2}
+\]
+より
+\begin{align}
+r_{\mathrm{TE}}
+=r_s
+&=\frac{\sqrt{\tilde n_i^2-\tilde n_e^2u^2}-\sqrt{\tilde n_t^2-\tilde n_e^2u^2}}
+{\sqrt{\tilde n_i^2-\tilde n_e^2u^2}+\sqrt{\tilde n_t^2-\tilde n_e^2u^2}}.
+\label{eq:rTE_u}
+\end{align}
+これは GPVM 論文 Eq.(3) における TE 反射係数の形と一致する。
+
+\subsubsection*{3.2\;透過係数}
+s偏光（TE）の透過係数 \eqref{eq:ts_angle} に \eqref{eq:ncos_to_sqrt} を適用する。
+\begin{align}
+t_{\mathrm{TE}}
+=t_s
+&=\frac{2\tilde n_i\cos\theta_i}{\tilde n_i\cos\theta_i+\tilde n_t\cos\theta_t}
+=\frac{2\sqrt{\tilde n_i^2-\tilde n_e^2u^2}}
+{\sqrt{\tilde n_i^2-\tilde n_e^2u^2}+\sqrt{\tilde n_t^2-\tilde n_e^2u^2}}.
+\label{eq:tTE_u}
+\end{align}
+これも GPVM Eq.(3) の TE 透過係数と一致する。
+
+\subsection*{4.\;TM（p偏光）の等価性：fresnel.pdf $\Rightarrow$ GPVM}
+\subsubsection*{4.1\;反射係数（角度表示からu表示への変形）}
+p偏光（TM）の反射係数 \eqref{eq:rp_angle} を用いる：
+\[
+r_p=\frac{\tilde n_t\cos\theta_i-\tilde n_i\cos\theta_t}{\tilde n_t\cos\theta_i+\tilde n_i\cos\theta_t}.
+\]
+ここで \eqref{eq:ncos_to_sqrt} を直接代入するために、$\cos\theta_i,\cos\theta_t$ を
+\[
+\cos\theta_i=\frac{\tilde n_i\cos\theta_i}{\tilde n_i}
+=\frac{\sqrt{\tilde n_i^2-\tilde n_e^2u^2}}{\tilde n_i},
+\qquad
+\cos\theta_t=\frac{\sqrt{\tilde n_t^2-\tilde n_e^2u^2}}{\tilde n_t}
+\]
+と書き換える。すると
+\begin{align}
+r_{\mathrm{TM}}
+=r_p
+&=\frac{
+\tilde n_t\left(\frac{\sqrt{\tilde n_i^2-\tilde n_e^2u^2}}{\tilde n_i}\right)
+-\tilde n_i\left(\frac{\sqrt{\tilde n_t^2-\tilde n_e^2u^2}}{\tilde n_t}\right)
+}{
+\tilde n_t\left(\frac{\sqrt{\tilde n_i^2-\tilde n_e^2u^2}}{\tilde n_i}\right)
++\tilde n_i\left(\frac{\sqrt{\tilde n_t^2-\tilde n_e^2u^2}}{\tilde n_t}\right)
+}.
+\label{eq:rTM_intermediate}
+\end{align}
+分子分母に $\tilde n_i\tilde n_t$ を掛けて整理すると
+\begin{align}
+r_{\mathrm{TM}}
+&=\frac{
+\tilde n_t^2\sqrt{\tilde n_i^2-\tilde n_e^2u^2}
+-\tilde n_i^2\sqrt{\tilde n_t^2-\tilde n_e^2u^2}
+}{
+\tilde n_t^2\sqrt{\tilde n_i^2-\tilde n_e^2u^2}
++\tilde n_i^2\sqrt{\tilde n_t^2-\tilde n_e^2u^2}
+}.
+\label{eq:rTM_u}
+\end{align}
+これは GPVM Eq.(3) における TM 反射係数の（Fresnel convention による）標準形に一致する。
+（後述の通り、文献によっては TM の場の符号規約により全体符号が反転した形で書かれることがある。）
+
+\subsubsection*{4.2\;透過係数（角度表示からu表示への変形）}
+p偏光（TM）の透過係数 \eqref{eq:tp_angle} を変形する：
+\[
+t_p=\frac{2\tilde n_i\cos\theta_i}{\tilde n_t\cos\theta_i+\tilde n_i\cos\theta_t}.
+\]
+上と同様に
+\[
+\tilde n_i\cos\theta_i=\sqrt{\tilde n_i^2-\tilde n_e^2u^2},\quad
+\cos\theta_i=\frac{\sqrt{\tilde n_i^2-\tilde n_e^2u^2}}{\tilde n_i},\quad
+\cos\theta_t=\frac{\sqrt{\tilde n_t^2-\tilde n_e^2u^2}}{\tilde n_t}
+\]
+を用いると
+\begin{align}
+t_{\mathrm{TM}}
+=t_p
+&=\frac{2\sqrt{\tilde n_i^2-\tilde n_e^2u^2}}
+{\tilde n_t\left(\frac{\sqrt{\tilde n_i^2-\tilde n_e^2u^2}}{\tilde n_i}\right)
++\tilde n_i\left(\frac{\sqrt{\tilde n_t^2-\tilde n_e^2u^2}}{\tilde n_t}\right)}.
+\label{eq:tTM_intermediate}
+\end{align}
+分子分母に $\tilde n_i\tilde n_t$ を掛けると
+\begin{align}
+t_{\mathrm{TM}}
+&=\frac{
+2\tilde n_i\tilde n_t\sqrt{\tilde n_i^2-\tilde n_e^2u^2}
+}{
+\tilde n_t^2\sqrt{\tilde n_i^2-\tilde n_e^2u^2}
++\tilde n_i^2\sqrt{\tilde n_t^2-\tilde n_e^2u^2}
+}.
+\label{eq:tTM_u}
+\end{align}
+これは GPVM Eq.(3) の TM 透過係数と一致する。
+
+\subsection*{5.\;TM反射係数の「符号規約」について（等価性の最終確認）}
+\subsubsection*{5.1\;符号反転が起こり得る理由}
+TE（s偏光）では、場の基底（進行波の符号）をどう定義しても、通常の定義では
+Fresnel 係数の符号に曖昧性は生じにくい。一方 TM（p偏光）では、界面で用いる
+振幅（$E$ を基底にするか、$H$ を基底にするか、あるいは進行波の符号付け）により、
+\emph{反射係数 $r_{\mathrm{TM}}$ の全体符号}が逆になった形（$r_{\mathrm{TM}}\to -r_{\mathrm{TM}}$）
+が文献に現れ得る。
+
+GPVM論文は、特定文献で採用される規約（Verdet convention）では TM 反射係数の符号が
+本研究（Fresnel convention）と逆になり得ることを述べる（ただし最終式は等価）。
+
+\subsubsection*{5.2\;物理量が等価であること（$|r|^2$ と界面行列の整合）}
+TM反射係数が規約により
+\[
+r_{\mathrm{TM}}^{(\mathrm{alt})} = -\,r_{\mathrm{TM}}
+\]
+と全体符号反転しても、反射率は
+\[
+R_{\mathrm{TM}} = |r_{\mathrm{TM}}|^2
+\]
+であり、符号反転は反射率を変えない。
+
+また、多層膜計算（TMM/Scattering）では、界面行列や散乱行列において
+$r$ と $t$ を \emph{同一の規約で一貫して}用いる限り、最終的に得られる
+透過率・反射率・強度分布・スペクトル密度などの観測量は変わらない。
+従って、fresnel.pdf の角度表示 \eqref{eq:rp_angle}--\eqref{eq:ts_angle} と
+GPVMの u表示 \eqref{eq:rTE_u}--\eqref{eq:tTM_u} は、（TMの符号規約の差を除き）
+同一のFresnel係数を表していると言える。
+
+\subsection*{6.\;結論}
+\begin{itemize}
+\item TE（s偏光）については、fresnel.pdf の式 \eqref{eq:rs_angle},\eqref{eq:ts_angle} に
+\eqref{eq:ncos_to_sqrt} を代入するだけで、GPVM Eq.(3) の u表示
+\eqref{eq:rTE_u},\eqref{eq:tTE_u} と完全に一致する。
+\item TM（p偏光）についても、fresnel.pdf の式 \eqref{eq:rp_angle},\eqref{eq:tp_angle} に
+\eqref{eq:ncos_to_sqrt} を適用し、\eqref{eq:rTM_intermediate}--\eqref{eq:tTM_u} の変形により、
+GPVM Eq.(3) の u表示と一致する。
+\item ただし TM反射係数については、場の符号規約（Fresnel vs Verdet など）により
+全体符号が反転した形で表される場合がある。しかし $|r|^2$ などの観測量は不変であり、
+多層膜計算でも規約を一貫させれば最終結果は等価である。
+\end{itemize}

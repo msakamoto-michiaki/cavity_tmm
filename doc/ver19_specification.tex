@@ -1,0 +1,664 @@
+
+\documentclass[a4paper,11pt]{jsarticle} % or ujsarticle がある環境ならそれでもOK
+
+\usepackage[dvipdfmx]{graphicx}
+\usepackage[dvipdfmx]{xcolor}   % xcolor使うなら
+\usepackage[dvipdfmx]{geometry} % 任意（警告回避に）
+\usepackage[dvipdfmx]{hyperref} % hyperrefは後ろ
+\usepackage{amsmath,amssymb}
+\usepackage{siunitx}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{subcaption}
+\captionsetup[subfigure]{
+    position=top,
+    justification=raggedright, % 左寄せ
+    singlelinecheck=off        % キャプションが短くても左寄せを維持する
+}
+\usepackage{float} %
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  columns=fullflexible,
+  breaklines=true,
+  frame=single,
+  framerule=0.4pt,
+  numbers=left,
+  numberstyle=\tiny,
+  xleftmargin=2.2em,
+  showstringspaces=false
+}
+
+\begin{document}
+
+
+
+
+% ver19 最終仕様書（preambleなし）
+% このファイルは \documentclass... を含みません。本文としてそのまま貼り付けて使用してください。
+
+\section*{ver19 最終仕様書（OLED cavity / GPVM / phase3-BT proxy / strict-EML）}
+
+\subsection*{0.\;目的とスコープ}
+本仕様書は、ver19 の最終的な実装を対象として、以下を包括的に記述する。
+\begin{itemize}
+\item \texttt{run\_rgb\_full\_eval.sh} が呼び出す各プログラムの概要、入出力、アルゴリズム
+\item \texttt{common/} および \texttt{gpvm/} 以下の共通関数の仕様（数式・規約・参照面）
+\item GPVM論文の式（特に Eq.(3), Eq.(26)--(30)）との対比
+\item phase3p1（policyB）最適化における BT proxy（rewrap）モデルと strict-EML モデルの違い
+\item TMM（transfer matrix method）と scattering matrix（S行列）法の違い、および数値安定化手法
+\item 実装上の落とし穴（参照面、TM符号規約、固定ファイル名上書き、cache、overflow）とその対策
+\end{itemize}
+
+\subsection*{1.\;リポジトリ構造（重要ファイル）}
+ver19 は、ルート直下の実行スクリプト群（\texttt{run\_*.py}）と、サブディレクトリ実体群、および共通ライブラリで構成される。
+
+\paragraph{(A) ルート直下（entrypoint / wrapper を含む）}
+\begin{itemize}
+\item \texttt{run\_rgb\_full\_eval.sh}（RGB一括実行ドライバ）
+\item \texttt{run\_phase3\_opt\_then\_gpvm\_eml\_profile.py}（WRITER：最適化＋proxy/strictの出力）
+\item \texttt{run\_gpvm\_K\_lambda\_u0.py}（U0\_MAIN：wrapper）
+\item \texttt{run\_gpvm\_K\_lambda\_u0\_A\_vs\_B.py}（U0\_AVSB：wrapper）
+\item \texttt{run\_gpvm\_K\_lambda\_kpar\_map\_strict.py}（HEATMAP：wrapper）
+\item \texttt{run\_bottom\_metal\_PEC\_proxy.py}（BOTTOM\_METAL：k依存性＋Lcav profile）
+\end{itemize}
+ルート直下の \texttt{run\_gpvm\_...} は、実体スクリプトをサブディレクトリから import して \texttt{main()} を呼ぶ wrapper として定義される。これにより「実体側の BASE（repo root）解決」を安定化し、\texttt{--best-json} の相対パス解決の不整合を回避する。
+
+\paragraph{(B) 実体スクリプト（run\_rgb\_full\_eval.sh の対象）}
+\begin{itemize}
+\item \texttt{gpvm\_k\_lambda\_u0/run\_gpvm\_K\_lambda\_u0.py}（strict-EML, u=0, full pol）
+\item \texttt{gpvm\_k\_lambda\_u0/run\_gpvm\_K\_lambda\_u0\_A\_vs\_B.py}（BT proxy vs strict 比較）
+\item \texttt{gpvm\_K\_lambda\_kpar\_map\_strict/run\_gpvm\_K\_lambda\_kpar\_map\_strict.py}（strict-EML heatmap）
+\end{itemize}
+
+\paragraph{(C) 共通ライブラリ}
+\begin{itemize}
+\item \texttt{common/units.py}：単位変換（nm$\leftrightarrow$m 等）
+\item \texttt{common/oled\_cavity\_phase3p1\_policyB.py}：phase3p1 の base と最適化
+\item \texttt{common/tmm\_rewrap\_utils\_policyB.py}：BT端反射（scattering行列）＋rewrap/proxy（Eq.(54)/(66)）
+\item \texttt{gpvm/*.py}：GPVMコア（Fresnel, kz, 行列, source-plane, Eq.(26)--(30) 等）
+\end{itemize}
+
+\subsection*{2.\;run\_rgb\_full\_eval.sh：全体ワークフロー仕様}
+\texttt{run\_rgb\_full\_eval.sh} は、RGBの3波長（既定：R=620nm, G=530nm, B=460nm）について、同一手順を繰り返し、出力を色別ディレクトリへ分離して生成する。
+\begin{enumerate}
+\item WRITER：最適化＋ best\_geometry.json 作成＋proxy/strict出力
+\item U0\_MAIN：strict-EML の $K(\lambda,u=0)$（成分分解つき）を出力
+\item U0\_AVSB：BT proxy と strict-EML の $K(\lambda,u=0)$ を比較（検証図）
+\item HEATMAP：strict-EML の $K(\lambda,k_\parallel)$ heatmap（成分分解 + 領域境界線）
+\item BOTTOM\_METAL：bottom metal（PEC proxy）条件で $|E|^2$ の Lcav profile と、境界 $|E(0)|$ の $k$ 依存性を出力
+\end{enumerate}
+
+\paragraph{(2.1) 上書き回避（色別ディレクトリ）}
+WRITERは、\texttt{--best-json} の親ディレクトリに固定名の \texttt{.npy/.png} を出力するため、RGBで同一ディレクトリを共有すると上書きが起こる。ver19 では以下の構造を推奨・採用する：
+\[
+\texttt{out\_gpvm\_step2/R/best\_geometry.json},\quad
+\texttt{out\_gpvm\_step2/G/best\_geometry.json},\quad
+\texttt{out\_gpvm\_step2/B/best\_geometry.json}.
+\]
+これにより、WRITERの固定名出力（proxy/field/strictなど）も自動的に色別分離される。
+
+\paragraph{(2.2) cache 衝突回避（heatmap）}
+heatmap は \texttt{*.npy} cache を \texttt{--outdir} に生成する。色ごとに \texttt{--outdir} を分けないと cache を誤読するため、RGBで \texttt{gpvm\_K\_lambda\_kpar\_map\_strict/out\_R}, \texttt{/out\_G}, \texttt{/out\_B} を分離する。
+
+\subsection*{3.\;物理モデルの二系統：phase3-BT proxy と strict-EML}
+ver19 の設計の核は、「phase3p1 最適化が見ている proxy（BT境界＋rewrap）モデル」と、「物理スタックに基づく strict-EML GPVM モデル」を明確に分離して扱うことである。
+
+\subsubsection*{3.1\;phase3-BT proxy（rewrap / objective）}
+phase3p1 の最適化は、EML内部の電場そのものではなく、terminal反射係数と光学座標（optical coordinate）を用いた Fabry--Perot proxy を用いる。
+
+\paragraph{(a) optical coordinate と terminal reflections}
+INTERNAL\_ORDER（Lcavの内部層順）を
+\[
+\texttt{INTERNAL\_ORDER}=[\mathrm{pHTL},\mathrm{Rprime},\mathrm{HTL},\mathrm{EBL},\mathrm{EML},\mathrm{ETL}]
+\]
+とする。物理座標 $z$（nm）に対し、phase3では層ごとの実屈折率を用いた optical coordinate
+\[
+z_{\mathrm{opt}}(z)=\sum_{j:\;\mathrm{left}\rightarrow z}\mathrm{Re}(\tilde n_j)\,\Delta z_j
+\]
+を定義し、Lcavの光学長
+\[
+L_{BT}=\sum_{j\in\mathrm{INTERNAL\_ORDER}}\mathrm{Re}(\tilde n_j)\,d_j
+\]
+を用いる。Bottom/Top terminal reflection は、\texttt{common/tmm\_rewrap\_utils\_policyB.py} で定義されるスタックに対して、
+\[
+r_B(\lambda,u,\mathrm{pol})\quad\text{at}\;\mathrm{pHTL}|\mathrm{ITO}\;\text{seen from pHTL},
+\]
+\[
+r_T(\lambda,u,\mathrm{pol})\quad\text{at}\;\mathrm{ETL}|\mathrm{cathode1}\;\text{seen from ETL}
+\]
+として求める。
+
+\paragraph{(b) bottom phase policy（$\phi_B$）}
+phase3-BT proxy は bottom反射の位相をポリシーで制御する。既定では
+\[
+r_B^{\mathrm{used}}(\lambda,u,\mathrm{pol})=-|r_B^{\mathrm{raw}}(\lambda,u,\mathrm{pol})|
+\]
+（$\phi_B=\pi$ を強制）とする。これは「最適化の目的関数と図の再現性」のための規約であり、物理 stack の位相とは一致しない場合がある。
+
+\paragraph{(c) rewrap 反射（ru/rd）と proxy $E2_{\mathrm{proxy}}(z)$}
+phase3では、位置 $z$ における rewrap 反射を
+\[
+r_u(z)=r_B^{\mathrm{used}}\exp\!\left(i\,2k_0\,z_{\mathrm{opt}}(z)\right),
+\qquad
+r_d(z)=r_T\exp\!\left(i\,2k_0\,(L_{BT}-z_{\mathrm{opt}}(z))\right),
+\]
+\[
+k_0=\frac{2\pi}{\lambda}
+\]
+と定義する。Fabry--Perot分母は
+\[
+D(z)=1-r_u(z)r_d(z)
+\]
+であり、phase3の未正規化 proxy は
+\begin{align}
+E2_{\mathrm{proxy}}(z)
+&=\frac{|1+r_u(z)|^2\,|1+r_d(z)|^2}{|D(z)|^2}
+=\frac{|1+r_u(z)|^2\,|1+r_d(z)|^2}{|1-r_u(z)r_d(z)|^2}.
+\label{eq:phase3_proxy}
+\end{align}
+この $E2_{\mathrm{proxy}}(z)$ は「最適化で用いる評価量」であり、strict-EML GPVM の $|E|^2$ とは別物である。
+
+\subsubsection*{3.2\;strict-EML GPVM（物理 stack）}
+strict-EML は、実際の stack（EML界面で左/右に分割）から reflection coefficient を抽出し、GPVM論文の式に従って $K$ や field を計算する。
+
+\paragraph{(a) kinematics：$u$ と $k_z$}
+参照屈折率を EML の屈折率 $\tilde n_e$ とし、面内波数を
+\[
+k_\parallel = k_0\,\tilde n_e\,u
+\]
+で表す。各層 $j$ の縦波数は
+\[
+k_{z,j} = k_0\sqrt{\tilde n_j^2-\tilde n_e^2u^2}
+\]
+で定義し、枝は
+\[
+\mathrm{Im}(k_{z,j})\ge 0
+\]
+となるよう選択する（エバネッセント波が界面から離れる方向に減衰）。
+
+\paragraph{(b) EML界面参照の left/right stack と rA/rB}
+EML層内の source plane（発光面）を EML左端から距離 $z_{ex}$ に置く。left stack を「EMLから見て左側」、right stack を「EMLから見て右側」とし、TE/TM別に transfer matrix から反射係数を抽出して
+\[
+r_A(\lambda,u,\mathrm{pol}),\quad r_B(\lambda,u,\mathrm{pol})
+\]
+を得る。これらは後述の GPVM Eq.(26)--(30) に入る。
+
+\subsection*{4.\;数値計算法：TMM と scattering matrix の違い、および安定化}
+\subsubsection*{4.1\;TMM（transfer matrix method）}
+2$\times$2 transfer matrix を用い、右側振幅から左側振幅への写像
+\[
+\begin{pmatrix}E_L^+\\ E_L^- \end{pmatrix}
+=
+M
+\begin{pmatrix}E_R^+\\ E_R^- \end{pmatrix}
+\]
+を構成する。多層膜では界面行列 $I^{j/(j+1)}$ と層内伝搬行列 $L^j(d_j)$ を掛け合わせて
+\[
+M = I^{0/1} L^1(d_1) I^{1/2} L^2(d_2)\cdots I^{N-2/(N-1)}
+\]
+を得る。
+
+\paragraph{(a) 界面行列（GPVM Eq.(2)）}
+GPVM論文の Eq.(2) に従い、界面行列を
+\[
+I^{j/(j+1)}=\frac{1}{t_{j/(j+1)}}
+\begin{pmatrix}
+1 & r_{j/(j+1)}\\
+r_{j/(j+1)} & 1
+\end{pmatrix}
+\]
+とする（$r,t$ は GPVM Eq.(3) の Fresnel 係数）。
+
+\paragraph{(b) 層内伝搬行列（GPVM Eq.(1)）}
+理想的には
+\[
+L^j(d)=
+\begin{pmatrix}
+e^{-ik_{z,j}d} & 0\\
+0 & e^{+ik_{z,j}d}
+\end{pmatrix}
+\]
+だが、$\mathrm{Im}(k_{z,j})\ge 0$ のとき $e^{-ik_{z,j}d}$ は $e^{+\mathrm{Im}(k_{z,j})d}$ を含み発散しうる。
+
+\subsubsection*{4.2\;TMMの数値不安定性（overflow の原因）}
+エバネッセント波では $\mathrm{Im}(k_{z,j})>0$ となり、transfer matrix の生の伝搬因子
+\[
+e^{-ik_{z,j}d}=e^{-i\mathrm{Re}(k_{z,j})d}\,e^{+\mathrm{Im}(k_{z,j})d}
+\]
+が指数的に増大する。深いスタックや短波長ではこれが浮動小数の上限を超え、
+\[
+\exp(+\mathrm{Im}(k_{z,j})d)\rightarrow \infty
+\]
+となって overflow を起こし、以後の行列積が NaN/Inf に汚染される。
+
+\subsubsection*{4.3\;ver19 のTMM安定化（スカラー正規化）}
+ver19 の \texttt{gpvm/matrices.py} と \texttt{gpvm/system\_matrix.py} は、TMMを維持しつつ以下の安定化を導入する。
+
+\paragraph{(a) 層行列のスカラー因子除去}
+反射係数抽出は行列要素比（例：$-M_{01}/M_{00}$）で行うため、全体スカラー倍は $r,t$ を変えない。そこで
+\[
+L^j(d)\mapsto e^{-\mathrm{Im}(k_{z,j})d}\,L^j(d)
+\]
+として、発散する $e^{+\mathrm{Im}(k_{z,j})d}$ を除去する。
+実装では
+\[
+L^j(d)=
+\begin{pmatrix}
+e^{-i\mathrm{Re}(k_{z,j})d} & 0\\
+0 & e^{+i\mathrm{Re}(k_{z,j})d}\,e^{-2\mathrm{Im}(k_{z,j})d}
+\end{pmatrix}
+\]
+を返し、$|L_{22}|\le 1$ を保証する。
+
+\paragraph{(b) 行列積の renorm}
+行列積の各ステップで
+\[
+M \leftarrow \frac{M}{\max(|M_{ab}|)}
+\]
+（スカラー）正規化を行い、overflow を防ぐ。これも比で抽出される $r,t$ を変えない。
+
+\subsubsection*{4.4\;scattering matrix（S行列）法（terminal reflection の安定計算）}
+transfer matrix の代わりに scattering matrix を用いると、エバネッセント波で指数発散する項を自然に避けられる。ver19 では BT端反射を \texttt{common/tmm\_rewrap\_utils\_policyB.py} 内で S行列カスケードにより計算する（PyMooshを本番依存から外し、テスト参照に限定する方針）。
+
+\paragraph{(a) 界面S行列}
+媒質1（左）と媒質2（右）の「admittance」$b$ を
+\[
+b=
+\begin{cases}
+k_z & (\mathrm{TE})\\
+k_z/\varepsilon & (\mathrm{TM})
+\end{cases}
+,\qquad \varepsilon=\tilde n^2
+\]
+とする（これは PyMoosh の \texttt{coefficient\_S} と整合する規約）。界面 scattering 行列は
+\[
+S_{\mathrm{int}}(b_1,b_2)=\frac{1}{b_1+b_2}
+\begin{pmatrix}
+b_1-b_2 & 2b_2\\
+2b_1 & b_2-b_1
+\end{pmatrix}.
+\]
+
+\paragraph{(b) 層S行列}
+厚さ $d$ の均一層の伝搬因子を
+\[
+t=e^{ik_z d}
+\]
+とし、
+\[
+S_{\mathrm{layer}}(t)=
+\begin{pmatrix}
+0 & t\\
+t & 0
+\end{pmatrix}
+\]
+とする。枝を $\mathrm{Im}(k_z)\ge 0$ としているため、エバネッセント波では
+\[
+|t|=|e^{ik_z d}|=e^{-\mathrm{Im}(k_z)d}\le 1
+\]
+となり発散しない（TMMの $e^{+\mathrm{Im}d}$ と対照的）。
+
+\paragraph{(c) カスケード合成}
+2つの散乱行列 $A$ と $B$ を直列に接続した合成 $S=A\circ B$ は
+\[
+t=\frac{1}{1-B_{00}A_{11}},
+\]
+\[
+S_{00}=A_{00}+A_{01}B_{00}A_{10}t,\quad
+S_{01}=A_{01}B_{01}t,
+\]
+\[
+S_{10}=B_{10}A_{10}t,\quad
+S_{11}=B_{11}+A_{11}B_{01}B_{10}t.
+\]
+全体散乱行列 $S$ の反射係数は
+\[
+r=S_{00}
+\]
+として得る（入射側から見た反射）。
+
+\subsection*{5.\;Fresnel 係数：fresnel.pdf と GPVM Eq.(3) の対比}
+\subsubsection*{5.1\;角度表示（fresnel.pdf）}
+入射側 $i$、透過側 $t$ に対して
+\[
+r_s=\frac{\tilde n_i\cos\theta_i-\tilde n_t\cos\theta_t}{\tilde n_i\cos\theta_i+\tilde n_t\cos\theta_t},
+\qquad
+t_s=\frac{2\tilde n_i\cos\theta_i}{\tilde n_i\cos\theta_i+\tilde n_t\cos\theta_t},
+\]
+\[
+r_p=\frac{\tilde n_t\cos\theta_i-\tilde n_i\cos\theta_t}{\tilde n_t\cos\theta_i+\tilde n_i\cos\theta_t},
+\qquad
+t_p=\frac{2\tilde n_i\cos\theta_i}{\tilde n_t\cos\theta_i+\tilde n_i\cos\theta_t}.
+\]
+
+\subsubsection*{5.2\;u表示（GPVM）と等価性}
+面内波数保存より
+\[
+k_\parallel = k_0\tilde n_e u = k_0\tilde n_j \sin\theta_j
+\]
+なので
+\[
+\tilde n_j\cos\theta_j = \sqrt{\tilde n_j^2-\tilde n_e^2u^2}.
+\]
+これを上式に代入することで GPVM Eq.(3) の u表示が得られる。ver19 の \texttt{gpvm/fresnel.py} は GPVM Eq.(3) を実装し、特に TM 反射係数に追加のマイナス符号を持つ規約を採用する：
+\[
+r_{\mathrm{TM}}^{\mathrm{GPVM}}
+=-\frac{k_{z,j}/\tilde n_j^2-k_{z,k}/\tilde n_k^2}{k_{z,j}/\tilde n_j^2+k_{z,k}/\tilde n_k^2},
+\qquad
+t_{\mathrm{TM}}^{\mathrm{GPVM}}
+=\frac{2k_{z,j}}{k_{z,j}(\tilde n_k/\tilde n_j)+k_{z,k}(\tilde n_j/\tilde n_k)}.
+\]
+一方、rewrap（PyMoosh互換）側では TM の界面反射に $b=k_z/\varepsilon$ を用いる規約（追加マイナス無し）を採用する。従って TM の符号規約は「どの行列定義と組み合わせるか」に依存し、混在させないことが重要である。
+
+\subsection*{6.\;GPVMコア式：Eq.(26)--(30)（ver19: gpvm/eqs\_gpvm.py）}
+ver19 では Eq.(26)--(30) の計算を \texttt{gpvm/eqs\_gpvm.py} に共通化した。全ての strict-EML 系スクリプト（U0\_MAIN, HEATMAP）はこの実装を参照する。さらに U0\_AVSB は Eq.(26)+Eq.(30) を wrapper として呼ぶ（重複排除）。
+
+\subsubsection*{6.1\;共通分母（Fabry--Perot）}
+\[
+D = 1-r_A r_B e^{i2k_z d}
+\]
+を共通に用いる（\texttt{\_D()}）。
+
+\subsubsection*{6.2\;TE水平双極子（Eq.(26)）}
+\[
+P_e^{\mathrm{TE},h}
+=
+\frac{3}{16\pi}\left[
+(1-R_B)\left|\frac{1+r_A e^{i2k_z z_{ex}}}{D}\right|^2
++
+(1-R_A)\left|\frac{1+r_B e^{i2k_z (d-z_{ex})}}{D}\right|^2
+\right],
+\]
+\[
+R_A=|r_A|^2,\quad R_B=|r_B|^2.
+\]
+
+\subsubsection*{6.3\;TM水平双極子（Eq.(27)）}
+\[
+P_e^{\mathrm{TM},h}
+=
+\frac{3}{16\pi}(1-u^2)\left[
+(1-R_B)\left|\frac{1+r_A e^{i2k_z z_{ex}}}{D}\right|^2
++
+(1-R_A)\left|\frac{1+r_B e^{i2k_z (d-z_{ex})}}{D}\right|^2
+\right].
+\]
+
+\subsubsection*{6.4\;TM垂直双極子（Eq.(28)）}
+Eq.(28) は分子の符号が異なる（重要）：
+\[
+P_e^{\mathrm{TM},v}
+=
+\frac{3}{8\pi}u^2\left[
+(1-R_B)\left|\frac{1-r_A e^{i2k_z z_{ex}}}{D}\right|^2
++
+(1-R_A)\left|\frac{1-r_B e^{i2k_z (d-z_{ex})}}{D}\right|^2
+\right].
+\]
+
+\subsubsection*{6.5\;$K$ 変換（Eq.(30)）}
+\[
+K(u)=\frac{\pi}{1-u^2}P_e(u).
+\]
+実装では $1-u^2$ のゼロ割を避けるため $\max(10^{-30},1-u^2)$ を用いる。
+
+\subsubsection*{6.6\;等方平均（コード規約）}
+ver19 の出力は以下で定義される：
+\[
+K_{\mathrm{TE\_only}}=\frac{2}{3}K_{\mathrm{TE},h},\quad
+K_{\mathrm{TM\_h\_only}}=\frac{2}{3}K_{\mathrm{TM},h},\quad
+K_{\mathrm{TM\_v\_only}}=\frac{1}{3}K_{\mathrm{TM},v},
+\]
+\[
+K_{\mathrm{iso}}=K_{\mathrm{TE\_only}}+K_{\mathrm{TM\_h\_only}}+K_{\mathrm{TM\_v\_only}}.
+\]
+
+\subsection*{7.\;各スクリプト仕様（run\_rgb\_full\_eval.sh が使用）}
+以下では、WRITER / U0\_MAIN / U0\_AVSB / HEATMAP / BOTTOM\_METAL の仕様を記述する。
+
+\subsubsection*{7.1\;WRITER：run\_phase3\_opt\_then\_gpvm\_eml\_profile.py}
+\paragraph{目的}
+phase3p1（policyB）の既存最適化経路を用いて、指定波長 $\lambda$ に対する best geometry（\texttt{best\_geometry.json}）を生成し、次を出力する。
+\begin{itemize}
+\item phase3の目的関数で使う未正規化 proxy $E2_{\mathrm{proxy}}(z)$ の Lcavプロファイル（推奨出力）
+\item strict-EML GPVM による EML 内 profile（診断用）
+\item （任意）phase3-BT の source-plane field を用いた EML内 profile（診断用）
+\end{itemize}
+重要：最適化の正当性検証には proxy が本体であり、strict-EML の $|E|^2$ と一致する必要はない。
+
+\paragraph{CLI input}
+\begin{itemize}
+\item \texttt{--lambda-nm}：最適化・評価波長（nm、既定650）
+\item \texttt{--best-json}：出力する best\_geometry.json のパス（相対はスクリプト位置基準）
+\end{itemize}
+
+\paragraph{主要 output（--best-json の親ディレクトリへ出力）}
+\begin{itemize}
+\item \texttt{best\_geometry.json}（厚み、最適化パラメータ、lambda\_nm、LBT、z\_ex 等）
+\item phase3 proxy（Lcav 全域）：
+  \begin{itemize}
+  \item \texttt{z\_lcav\_nm\_phase3BT.npy}
+  \item \texttt{zopt\_lcav\_nm\_phase3BT.npy}
+  \item \texttt{E2\_proxy\_lcav\_phase3BT\_raw.npy}（未正規化：目的関数そのもの）
+  \item \texttt{E2\_proxy\_lcav\_phase3BT\_norm.npy}（可視化用）
+  \item \texttt{gpvm\_lcav\_proxy\_phase3BT.png}（EML境界＋中心点線入り）
+  \end{itemize}
+\item strict-EML EML profile：
+  \begin{itemize}
+  \item \texttt{z\_eml\_nm.npy}, \texttt{I\_TE\_h\_strictEML.npy} 等
+  \item \texttt{gpvm\_eml\_profiles\_strictEML.png}
+  \end{itemize}
+\end{itemize}
+
+\paragraph{アルゴリズム（要点）}
+\begin{enumerate}
+\item \texttt{common/oled\_cavity\_phase3p1\_policyB.py} の \texttt{optimize\_etl\_then\_s()} を呼び、ETL厚 \texttt{etl\_best} とスケール \texttt{s\_best} を探索する。
+\item 最適化の目的関数は、proxy $E2_{\mathrm{proxy}}(z)$ のピーク位置 $z_{\mathrm{peak}}$ と EML中心 $z_{\mathrm{center}}$ の距離
+\[
+\mathrm{score}=\left|z_{\mathrm{peak}}-z_{\mathrm{center}}\right|
+\]
+（ピーク誤差）を最小化する。
+\item terminal reflections を \texttt{common.tmm\_rewrap\_utils\_policyB.terminal\_reflections\_BT()} で計算し、\eqref{eq:phase3_proxy} に従い Lcav全域の $E2_{\mathrm{proxy}}$ を出力する。
+\end{enumerate}
+
+\paragraph{（重要）発見されたバグと修正}
+過去に、BT terminal 参照の $r_B,r_T$ をそのまま source-plane solver に渡してしまい、field-like profile が破綻するバグがあった。ver19 では、
+\[
+r_A^{(\mathrm{src})}=r_B^{\mathrm{used}}e^{i2k_0 z_{ex,\mathrm{opt}}},
+\qquad
+r_B^{(\mathrm{src})}=r_T e^{i2k_0(L_{BT}-z_{ex,\mathrm{opt}})}
+\]
+として source-plane 参照に変換してから \texttt{solve\_source\_plane\_fields()} に渡す（proxy出力自体はこの変換を必要としないが、診断 field の整合性のため実装した）。
+
+\subsubsection*{7.2\;U0\_MAIN：gpvm\_k\_lambda\_u0/run\_gpvm\_K\_lambda\_u0.py}
+\paragraph{目的}
+strict-EML（物理 stack）に基づき、$u=0$ の $K(\lambda)$ を TE/TM×(h,v) 成分分解で計算し、\texttt{*.npy} と図を出力する（定量本体）。
+
+\paragraph{CLI input}
+\begin{itemize}
+\item \texttt{--best-json}：geometry JSON（既定：\texttt{./out\_gpvm\_step2/best\_geometry.json}）
+\item \texttt{--outdir}：出力ディレクトリ
+\item \texttt{--tag}：出力ファイル名サフィックス（\_R/\_G/\_B 等）
+\item 波長グリッド：
+  \texttt{--lam-center-nm}, \texttt{--lam-span-nm}, \texttt{--lam-min-nm}, \texttt{--lam-max-nm}, \texttt{--n-lam}
+\end{itemize}
+
+\paragraph{Output（例）}
+\begin{itemize}
+\item \texttt{lam\_nm\_\{tag\}.npy}
+\item \texttt{K\_TE\_h\_\{tag\}.npy}, \texttt{K\_TM\_h\_\{tag\}.npy}, \texttt{K\_TM\_v\_\{tag\}.npy}
+\item \texttt{K\_iso\_\{tag\}.npy} 等
+\item \texttt{gpvm\_K\_lambda\_u0\_components\_strict\_\{tag\}.png}
+\end{itemize}
+
+\paragraph{アルゴリズム（要点）}
+\begin{enumerate}
+\item \texttt{common.oled\_cavity\_phase3p1\_policyB.build\_current\_base()} から $n_0,d_0$ を取得し、ITOを PEC近似金属に置換：
+\[
+\tilde n_{\mathrm{ITO}}=0.14+2000i.
+\]
+\item EML屈折率は lossless として $\tilde n_e=\mathrm{Re}(\tilde n_{\mathrm{EML}})$ を用いる。
+\item EML界面で left/right stack を構築し、各 $\lambda$ で TE/TM別に transfer matrix を計算して $r_A,r_B$ を抽出する。
+\item Eq.(26)--(30) を \texttt{gpvm/eqs\_gpvm.py} で評価し、成分および $K_{\mathrm{iso}}$ を出力する。
+\end{enumerate}
+
+\subsubsection*{7.3\;U0\_AVSB：gpvm\_k\_lambda\_u0/run\_gpvm\_K\_lambda\_u0\_A\_vs\_B.py}
+\paragraph{目的}
+同一 geometry に対して
+\[
+\text{A: phase3-BT proxy}\quad \text{vs}\quad \text{B: strict-EML}
+\]
+の $K(\lambda,u=0)$ を比較し、ズレを可視化する（検証用）。
+
+\paragraph{成分の扱い}
+比較目的のため TE×h のみを計算し、等方平均を
+\[
+K_{\mathrm{iso}}\approx \frac{2}{3}K_{\mathrm{TE},h}
+\]
+として扱う（TM成分を含めた全成分比較は本仕様外だが拡張可能）。
+
+\paragraph{なぜ Eq.(26) と Eq.(30) を合成するのか（設計意図）}
+u=0固定では Eq.(30) は $K=\pi P_e$ の定数倍であり、中間量 $P_e$ を保存する必要が薄い。したがって過去実装では Eq.(26) と Eq.(30) を合成した関数として記述されていた。ver19では共通化のため \texttt{Pe\_TE\_h\_eq26} と \texttt{K\_from\_Pe\_eq30} の wrapper 呼び出しに統一した。
+
+\paragraph{Output}
+\begin{itemize}
+\item \texttt{gpvm\_K\_lambda\_u0\_A\_vs\_B\_\{tag\}.png}
+\item （必要最小の）\texttt{lam\_nm}, \texttt{K\_A}, \texttt{K\_B} の \texttt{.npy}
+\end{itemize}
+
+\subsubsection*{7.4\;HEATMAP：gpvm\_K\_lambda\_kpar\_map\_strict/run\_gpvm\_K\_lambda\_kpar\_map\_strict.py}
+\paragraph{目的}
+strict-EML GPVM により、$K(\lambda,k_\parallel)$（2次元）を TE/TM×(h,v) 成分分解で計算し、heatmap と検証図を生成する。
+
+\paragraph{CLI input}
+\begin{itemize}
+\item \texttt{--best-json}, \texttt{--outdir}, \texttt{--tag}
+\item 波長グリッド：\texttt{--lam-center-nm}, \texttt{--lam-span-nm}, \texttt{--lam-min-nm}, \texttt{--lam-max-nm}, \texttt{--n-lam}
+\end{itemize}
+
+\paragraph{k\_parallel グリッド}
+$u_{\max}\approx 0.99$ を用い、最短波長での $k_0$ から
+\[
+k_{\parallel,\max}=u_{\max}\,\mathrm{Re}(\tilde n_e)\,k_0(\lambda_{\min})
+\]
+を定め、$k_\parallel\in[0,k_{\parallel,\max}]$ を離散化する（実装では $\mu\mathrm{m}^{-1}$ 表示も出力）。
+
+\paragraph{Output}
+\begin{itemize}
+\item cache（tagなし）：\texttt{lam\_nm.npy}, \texttt{kpar\_grid\_um.npy}, \texttt{K\_*\_map.npy}, \texttt{K\_*\_u0.npy}
+\item figures（tag付き）：linear/log、軸入れ替え版、境界線オーバレイ、k//=0チェック図
+\end{itemize}
+
+\paragraph{数値安定化}
+heatmap は evanescent を含みやすく、TMMの overflow が起きやすい。ver19 では \S4.3 のスカラー正規化により、exp overflow の連鎖を抑止する。
+
+\subsubsection*{7.5\;BOTTOM\_METAL：run\_bottom\_metal\_PEC\_proxy.py}
+\paragraph{目的}
+bottom 境界を半無限金属（PEC proxy）で近似し、(i) 境界 $|E(0)|$ の $k$ 依存性、(ii) 代表 $k$（既定2000）での Lcav 全域 $|E|^2$ profile を出力する。
+
+\paragraph{CLI input}
+\begin{itemize}
+\item \texttt{--best-json}, \texttt{--outdir}, \texttt{--tag}
+\item \texttt{--xmax-nm}：プロットの x軸最大を固定（RGB整列用）
+\end{itemize}
+
+\paragraph{モデル}
+bottom半無限媒質を
+\[
+\tilde n_{\mathrm{metal}}=0.14+ik
+\]
+として置換し、kを掃引する（$\mathrm{TE}\times h$, $u=0$）。
+
+\paragraph{出力}
+\begin{itemize}
+\item \texttt{need\_k\_for\_E0\_small\_\{tag\}.csv}（$k$ と ratio）
+\item \texttt{need\_k\_for\_E0\_small\_\{tag\}.png}
+\item \texttt{gpvm\_lcav\_profile\_bottomMetal\_k2000\_\{tag\}.png}
+\end{itemize}
+
+\subsection*{8.\;共通関数仕様（common/）}
+\subsubsection*{8.1\;common/units.py}
+依存ゼロの純関数として、nm$\leftrightarrow$m 等の変換を提供する。配列・スカラー両対応であり、スカラーは \texttt{float} を返す。
+\[
+\mathrm{nm\_to\_m}(x)=x\times 10^{-9},\qquad
+\mathrm{m\_to\_nm}(x)=x\times 10^{9}.
+\]
+
+\subsubsection*{8.2\;common/oled\_cavity\_phase3p1\_policyB.py}
+phase3p1 のベースモデル（屈折率と初期厚）と最適化ルーチンを提供する。
+\begin{itemize}
+\item \texttt{build\_current\_base()}：$n_0,d_0$ を返す（屈折率は基本的に固定値）
+\item \texttt{optimize\_etl\_then\_s(...)}：ETL厚とスケールを探索し、proxyピークがEML中心に来る候補を返す
+\item \texttt{INTERNAL\_ORDER}：Lcav内部層の順序
+\end{itemize}
+
+最適化が minimization する量は（proxyを用いた）ピーク位置誤差であり、境界 $|E(0)|$ を小さくすることは目的関数に含まれない。
+
+\subsubsection*{8.3\;common/tmm\_rewrap\_utils\_policyB.py}
+BT端反射の評価と、phase3 proxy（rewrap）の計算を提供する。ver19の本番経路は PyMoosh に依存せず、S行列カスケードで terminal reflection を計算する（\S4.4）。
+\begin{itemize}
+\item \texttt{terminal\_reflections\_BT(...)}：$(r_B^{used}, r_T, r_B^{raw})$ を返す（配列）
+\item \texttt{stack\_reflection\_smatrix\_spectrum(...)}：任意スタックの $r(\lambda)$ を返す（安定）
+\item \texttt{effective\_ru\_rd\_at\_S\_from\_BT(...)}：$r_u,r_d$ の構成（rewrap）
+\item \texttt{green\_terms\_from\_ru\_rd(...)}：proxy式（\eqref{eq:phase3_proxy} 等）を返す
+\end{itemize}
+
+\subsection*{9.\;GPVMコア（gpvm/）}
+\subsubsection*{9.1\;gpvm/kz.py}
+\[
+k_z=k_0\sqrt{\tilde n^2-\tilde n_e^2u^2}
+\]
+を計算し、枝を $\mathrm{Im}(k_z)\ge 0$ に固定する（エバネッセント減衰）。
+
+\subsubsection*{9.2\;gpvm/fresnel.py（GPVM Eq.(3)）}
+\texttt{fresnel\_rt()} は TE/TM の $r,t$ を返す。TM反射には論文規約に合わせた追加マイナスが入る（\S5.2）。
+
+\subsubsection*{9.3\;gpvm/matrices.py（Eq.(1),(2)）}
+\begin{itemize}
+\item \texttt{layer\_matrix()}：\S4.3(a) のスカラー因子除去を実装（overflow回避）
+\item \texttt{interface\_matrix()}：$I=(1/t)\begin{pmatrix}1&r\\r&1\end{pmatrix}$
+\end{itemize}
+
+\subsubsection*{9.4\;gpvm/system\_matrix.py}
+\begin{itemize}
+\item \texttt{stack\_transfer\_matrix()}：多層 transfer matrix 構築（renormあり）
+\item \texttt{rt\_from\_transfer\_matrix()}：左入射（$E_R^-=0$）の $(r,t)$ を抽出
+\item \texttt{rt\_incident\_from\_right()}：右入射の $(r,t)$ を抽出（Eq.(12) の $S^A$ 用）
+\item \texttt{build\_system\_matrices\_SA\_SB()}：GPVM Eq.(6),(7) の $S^A,S^B$ 構築
+\item \texttt{eq12\_rt\_from\_SA\_SB()}：Eq.(12) の $(r_A,t_A,r_B,t_B)$ を抽出
+\end{itemize}
+
+\subsubsection*{9.5\;gpvm/source\_terms.py と gpvm/source\_plane.py}
+\texttt{source\_terms()} は TE/TM, h/v に応じた source term（Eq.(5) に相当する係数）を返し、\texttt{solve\_source\_plane\_fields()} は source-plane 参照の $r_A,r_B$ を用いて source plane 両側の進行波振幅 $(E_a^\pm,E_b^\pm)$ を解く。参照面を誤ると field-like profile が破綻するため、terminal反射を投入する際は必ず source-plane 参照へ変換する。
+
+\subsection*{10.\;テスト方針（概要）}
+ver19 では「run\_rgb\_full\_eval.sh が用いるスクリプトと gpvm/common の共通ライブラリ」を検証対象とし、可能な限り PyMoosh（\texttt{PyMoosh-stable}）を参照（ref）として比較する。
+\begin{itemize}
+\item Fresnel（rewrap規約） vs PyMoosh interface
+\item BT terminal reflections（rb\_raw/rt） vs PyMoosh coefficient\_S
+\item proxy $E2_{\mathrm{proxy}}(z)$ の自己一致（最適化内部とWRITER出力）
+\item TMM stack r vs PyMoosh（strict側）
+\item bottom metal の $k$ 依存性（単調性＋閾値）
+\end{itemize}
+
+\subsection*{11.\;運用上の注意（事故の典型と対策）}
+\begin{itemize}
+\item \textbf{固定名出力の上書き}：WRITERは \texttt{--best-json} の親に固定名を出す。RGBは必ず色別ディレクトリへ。
+\item \textbf{cache衝突}：heatmap の \texttt{*.npy} は \texttt{--outdir} に固定名で作られる。色別 outdir 分離必須。
+\item \textbf{参照面の混同}：terminal反射と source-plane反射を混ぜない。solverに入れる $r_A,r_B$ は source-plane参照。
+\item \textbf{TM符号規約}：GPVM（\texttt{gpvm/fresnel.py}）と rewrap（PyMoosh互換）のTM規約は異なる。用途ごとに一貫させる。
+\item \textbf{overflow/NaN}：evanescent領域で発散しやすい。TMM安定化（スカラー除去＋renorm）と、端反射はS行列法を使う。
+\item \textbf{SSH切断}：\texttt{source} でシェルに \texttt{set -e} を持ち込むと、エラーでログインシェルが exit し SSHが切れたように見える。\texttt{bash run\_rgb\_full\_eval.sh} で実行する。
+\end{itemize}
+
+\subsection*{12.\;まとめ}
+ver19 は、phase3の最適化が依拠する BT proxy（rewrap / proxy）と、strict-EML GPVM（物理 stack）を分離し、両者の関係（比較）を U0\_AVSB で監視できる構成とした。数値安定化として、(i) TMM側のスカラー正規化、(ii) BT端反射の S行列カスケード実装、(iii) 波長グリッドの可変化、(iv) wrapper化による BASE 解決の安定化、を導入した。これにより RGB一括評価（\texttt{run\_rgb\_full\_eval.sh}）が再現性高く実行でき、最適化（proxy）と物理評価（strict）を同一リポジトリ内で明確に比較・検証できる。
+
+\end{document}
+
